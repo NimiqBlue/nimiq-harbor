@@ -1,0 +1,48 @@
+{
+  "name": "nimiq-harbor",
+  "version": "0.1.0",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0 <27"
+  },
+  "scripts": {
+    "dev": "node --env-file-if-exists=.env --import tsx scripts/dev.ts",
+    "start": "node --env-file-if-exists=.env --import tsx src/server/start.ts",
+    "check": "tsc --noEmit",
+    "test": "node --experimental-test-module-mocks --import tsx --test tests/current-swap-compatibility.test.ts tests/local-config.test.ts",
+    "build": "tsc --noEmit && vite build",
+    "test:e2e": "node --import tsx scripts/browser-smoke.ts"
+  },
+  "dependencies": {
+    "@1inch/fusion-sdk": "2.4.16",
+    "@fastify/static": "10.1.10",
+    "assert": "2.1.0",
+    "axios": "1.20.0",
+    "fastify": "5.12.7",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "viem": "2.57.7",
+    "zod": "4.6.7"
+  },
+  "overrides": {
+    "ethers": {
+      "ws": "8.22.0"
+    }
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@playwright/test": "1.64.1",
+    "@types/node": "26.6.5",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.1.2",
+    "eslint": "10.13.0",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.71.2",
+    "vite": "8.3.4",
+    "vitest": "5.0.5"
+  }
+}

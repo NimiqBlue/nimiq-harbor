@@ -1,0 +1,29 @@
+/* Original Harbor inline settings and execution-gas label. */
+.swap-card .swap-heading{padding:0;justify-content:space-between;gap:12px;margin-bottom:22px}
+.swap-card .swap-heading h2{text-align:left;white-space:nowrap}
+.gas-included{display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:8px 11px;background:#eaf7f3;color:#197b66;font-size:13px;font-weight:700;white-space:nowrap}
+.gas-included svg{width:19px;height:19px;flex:none}
+.swap-card .swap-settings-inline{position:static;border:1px solid #e8eaf0;border-radius:20px;margin:22px 0 0;background:#fafbfd;padding:4px 6px}
+.swap-settings-inline .swap-settings-title{padding:12px 12px 6px;font-size:16px}
+.swap-settings-inline .slippage-value{font-size:13px;font-weight:700;color:var(--blue)}
+.swap-settings-inline .slippage-panel{padding:8px 12px 12px}
+.swap-settings-inline .slippage-heading{font-size:15px;margin-bottom:12px}
+.swap-settings-inline .slippage-presets{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.swap-settings-inline .slippage-presets button{min-height:43px;border:1px solid #e3e7ed;border-radius:12px;background:#fff;color:var(--navy);font-size:15px;font-weight:700}
+.swap-settings-inline .slippage-presets button[aria-pressed=true]{background:#fff4cf;border-color:var(--gold);color:var(--navy)}
+.swap-settings-inline .custom-slippage{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:14px}
+.swap-settings-inline .custom-slippage label{flex:1;color:var(--muted)}
+.swap-settings-inline .custom-slippage input{width:78px;min-height:40px;background:#fff;border:1px solid #e3e7ed;border-radius:10px;padding:6px 9px;text-align:right;color:var(--navy);font-size:16px}
+.swap-settings-inline .swap-deadline{padding-top:16px;margin-top:16px}
+.swap-settings-inline .swap-deadline label{font-size:16px}
+.swap-settings-inline .slippage-help{font-size:12px;color:var(--muted);line-height:1.5;margin-top:9px}
+.harbor-scene:has(.lighthouse-scene){align-self:start;position:sticky;top:24px;min-height:560px;max-height:780px}
+.harbor-scene .lighthouse-scene{height:clamp(560px,64vw,780px);min-height:560px;aspect-ratio:auto}
+@media(max-width:780px){.harbor-scene:has(.lighthouse-scene){display:none}}
+@media(max-width:420px){.swap-card .swap-heading{gap:6px}.swap-card .swap-heading h2{font-size:21px}.gas-included{font-size:11px;padding:7px 8px;gap:5px}.gas-included svg{width:17px;height:17px}.swap-settings-inline .slippage-panel{padding:8px}.swap-settings-inline .swap-settings-title{padding:10px 8px 6px;font-size:15px}.swap-settings-inline .slippage-presets{gap:5px}.swap-settings-inline .slippage-presets button{font-size:14px}.swap-settings-inline .swap-deadline label{font-size:15px}.swap-settings-inline .swap-deadline>div{padding:3px 7px}.swap-settings-inline .swap-deadline span{font-size:12px}}
+
+/* One readable quote failure, with an explicit retry and no policy changes. */
+.swap-card .swap-quote-feedback{margin:18px 0;padding:18px 20px;border:1px solid #e8dfca;border-radius:16px;background:#fffbf2;color:var(--navy);font-family:inherit;font-size:15px;font-weight:400;line-height:1.6;overflow-wrap:break-word}
+.swap-card .swap-quote-feedback strong{display:block;font-size:16px;font-weight:700;line-height:1.4}
+.swap-card .swap-quote-feedback p{margin:7px 0 10px;font:inherit;color:inherit}
+.swap-card .swap-quote-feedback .text-button{min-height:44px;padding:8px 0;font-family:inherit;font-size:15px;font-weight:700;line-height:1.5;text-align:left}

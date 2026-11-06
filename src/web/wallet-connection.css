@@ -1,0 +1,9 @@
+.wallet-notice,.wallet-connection-progress{display:flex;align-items:center;gap:12px;margin:0 0 16px;padding:14px 16px;border:1px solid #dce3ec;border-radius:16px;background:#fff;color:#343b55;font-size:15px;line-height:22px;box-shadow:0 3px 12px #1f234806}
+.wallet-notice>svg{width:24px;height:24px;flex-shrink:0;fill:none;stroke:#52688c;stroke-width:1.8;stroke-linecap:round}
+.wallet-notice>div{flex:1;min-width:0}
+.wallet-notice strong,.wallet-notice span{display:block}
+.wallet-notice strong{font-weight:700;color:#1f2348}
+.wallet-notice .text-button{align-self:flex-start;flex-shrink:0;width:28px;min-height:28px;margin:-3px -6px 0 0;font-size:22px;color:#526078}
+.wallet-connection-progress{flex-wrap:wrap;justify-content:space-between}
+.wallet-connection-progress .text-button{font-size:15px;line-height:22px;font-weight:700}
+@media(max-width:390px){.wallet-notice,.wallet-connection-progress{padding:12px;gap:10px}.wallet-notice>svg{width:20px;height:20px}}

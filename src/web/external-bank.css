@@ -1,0 +1,54 @@
+.external-bank h2 { margin: 0 0 16px; }
+.external-bank p { line-height: 1.5; }
+.external-bank > p + button { margin-top: 24px; }
+.external-bank-check { display: flex; align-items: flex-start; gap: 10px; margin: 20px 0; line-height: 1.45; }
+.external-bank-check input { flex: none; margin-top: 5px; }
+.external-bank iframe { display: block; width: 100%; height: 740px; border: 0; margin-top: 16px; }
+.external-bank .reload-widget { display: inline-flex; align-items: center; justify-content: center; width: 44px; min-height: 44px; padding: 8px; }
+@media (max-width: 480px) {
+  .external-bank-widget { width: calc(100vw - 32px); margin-left: calc(50% - 50vw + 16px); margin-top: 16px; height: 740px; overflow: hidden; }
+  .external-bank iframe { width: 100%; max-width: none; margin: 0; }
+}
+/* Keep the provider's tabs usable at 320px without sacrificing scroll gutters. */
+@media (max-width: 351px) {
+  .external-bank iframe { width: calc(100% / .9); height: calc(740px / .9); transform: scale(.9); transform-origin: top left; }
+}
+.external-bank-note { font-size: 13px; }
+.manual-send { margin-top: 8px; }
+.manual-send-instructions p { margin: 10px 0; font-size: 17px; line-height: 1.45; }
+.manual-send-instructions .manual-send-sender-warning { padding: 12px 14px; border-radius: 10px; background: #fff7df; color: #30270f; }
+.manual-send-dialog .manual-send-from { font-size: 17px; line-height: 1.5; margin: 14px 0; }
+.manual-send-dialog label { font-size: 17px; }
+.manual-send-dialog { position: fixed; inset: 0; margin: auto; box-sizing: border-box; width: min(calc(100% - 24px), 560px); max-height: calc(100dvh - 24px); overflow-y: auto; border: 0; background: white; color: #1f2348; border-radius: 18px; padding: 24px; }
+.manual-send-dialog::backdrop { background: #0009; }
+.manual-send-dialog label { display: grid; gap: 6px; margin: 12px 0; font-weight: 600; }
+.manual-send-dialog input, .manual-send-dialog select { box-sizing: border-box; width: 100%; min-width: 0; padding: 10px; border: 1px solid #aaa; border-radius: 8px; font-size: 16px; }
+.manual-send-dialog code, .manual-send-explorer { overflow-wrap: anywhere; }
+.manual-send-dialog button { margin-top: 12px; }
+.manual-send-review { border: 1px solid #aaa; background: white; padding: 12px; border-radius: 10px; }
+.manual-send-trigger, .manual-send-heading { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.manual-send-heading { justify-content: flex-start; }
+.manual-send-heading h2 { margin: 0; font-size: 23px; }
+.external-bank .manual-send-trigger { min-height: 64px; font-size: 19px; line-height: 1.3; padding: 14px 18px; }
+.manual-send-trigger img, .manual-send-heading img { width: 82px; height: 32px; object-fit: contain; flex-shrink: 0; }
+.manual-send-dialog [role="status"] { font-size: 16px; line-height: 1.5; padding: 12px; border-radius: 10px; background: #f1f5fa; }
+@media (max-width: 420px) { .external-bank .manual-send-trigger { font-size: 17px; gap: 8px; } .manual-send-trigger img, .manual-send-heading img { width: 66px; height: 28px; } }
+
+.external-bank > button.primary.full, .external-bank > button.secondary { font-size: 20px; line-height: 1.3; }
+
+.manual-send-dialog button.primary, .manual-send-dialog button.secondary { font-size: 18px; line-height: 1.3; min-height: 52px; }
+
+/* Keep the overlay within the mobile viewport and scroll its own content. */
+@media (max-width: 600px) {
+  .manual-send-dialog { top: 12px; bottom: 12px; left: 12px; right: 12px; margin: 0; width: auto; height: calc(100dvh - 24px); max-width: none; max-height: calc(100dvh - 24px); padding: 18px; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  .manual-send-heading h2 { font-size: 20px; }
+}
+.personal-message-sign { margin: 24px 0; padding: 18px; border: 1px solid #d6dce2; border-radius: 12px; }
+.personal-message-sign textarea { display: block; width: 100%; box-sizing: border-box; resize: vertical; white-space: pre-wrap; overflow-wrap: anywhere; }
+.personal-message-sign code { overflow-wrap: anywhere; }
+.personal-message-sign button { margin-top: 12px; }
+
+.bank-utilities { display: grid; gap: 10px; margin-bottom: 24px; }
+.bank-utilities .manual-send { margin: 0; }
+.sign-utility summary { cursor: pointer; padding: 12px; text-align: center; border: 1px solid #d6dce2; border-radius: 10px; font-weight: 600; }
+.sign-utility .personal-message-sign { margin: 10px 0 0; }

@@ -1,0 +1,25 @@
+.manual-send-dialog.sign-message-dialog {
+  inset: calc(var(--sign-viewport-top, 0px) + 12px) 12px auto;
+  margin: 0 auto;
+  width: min(calc(100% - 24px), 560px);
+  height: auto;
+  max-height: calc(var(--sign-viewport-height, 100dvh) - 24px);
+  padding: 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding: 18px;
+  -webkit-overflow-scrolling: touch;
+}
+.sign-message-dialog .personal-message-sign { margin: 0; padding: 0; border: 0; min-width: 0; }
+.sign-message-dialog h2 { margin: 0 44px 18px 0; font-size: 24px; line-height: 1.25; }
+.sign-message-dialog p { font-size: 16px; line-height: 1.5; margin: 12px 0; }
+.sign-message-dialog .sign-warning { background: #fff7df; border-radius: 10px; padding: 12px; }
+.sign-message-dialog .sign-selected-account code { display: block; margin-top: 4px; font-size: 14px; line-height: 1.5; word-break: break-all; }
+.sign-message-dialog textarea { min-width: 0; max-width: 100%; font: 16px/1.5 ui-monospace, monospace; padding: 10px 12px; border: 1px solid #9ba3b0; border-radius: 8px; min-height: 112px; }
+.sign-message-dialog label { font-size: 16px; }
+.sign-message-dialog .sign-dialog-close { position: sticky; top: 0; z-index: 1; display: block; float: right; width: 44px; min-height: 44px; margin: -10px -10px 0 0; background: white; border-radius: 50%; font-size: 28px; line-height: 1; }
+.sign-message-dialog button.secondary { font-size: 16px; min-height: 48px; }
+@media (max-width: 600px) {
+  .manual-send-dialog.sign-message-dialog { padding: 18px; }
+  .sign-message-dialog h2 { font-size: 22px; }
+}

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <meta name="description" content="How the independent Harbor interface handles wallet, swap and connection data.">
+  <title>Privacy · Harbor</title>
+  
+  <link rel="stylesheet" href="/legal.css">
+</head>
+<body>
+  <header><a class="brand" href="/" aria-label="Harbor home"><span aria-hidden="true">H</span>Harbor.</a></header>
+  <main id="main">
+    <h1>Privacy</h1>
+    <p class="updated">Updated November 5, 2026</p>
+    <p class="notice">This notice describes the interface as currently understood. The operator's identity and privacy contact, applicable legal bases, retention periods, international transfer arrangements and rights-request procedure remain to be confirmed and published. Legal review is needed before wider release.</p>
+    <h2>Information involved</h2>
+    <p>When you connect a wallet or use Harbor, wallet addresses, network, balances, token choices, amounts, quotes, transaction identifiers and status may be processed to display information, prepare transactions and help recover their status. Swap execution can involve permits, signed orders, operation identifiers and related recovery data. Signatures can grant spending authority. Harbor does not ask for your private key or recovery phrase.</p>
+    <p>Connecting a wallet to Harbor does not itself require identity verification. The independent fiat provider shown in Bank may request identity, contact, payment or other information directly from you, depending on its requirements. That provider processes information under its own privacy notice and terms. Review them before proceeding.</p>
+    <h2>Mt Pelerin: personal and banking information</h2>
+    <p>The Bank flow loads directly from Mt Pelerin's domain in an embedded widget. In the current integration, Harbor does not proxy the widget's requests, and its backend does not receive or store the personal information entered within it: phone numbers, SMS verification codes, IBANs or other bank details, identity documents, KYC information or order details. These are handled by Mt Pelerin under its own privacy notice. No integration forwards those widget fields to Harbor.</p>
+    <p>Pay and Swap are separate wallet/blockchain functions. They process wallet addresses, token amounts, transaction details and, where applicable, signed authorizations and recovery data—not the SMS codes, IBANs or identity documents entered in the widget. If you manually copy payment instructions into Pay, the recipient and amount are processed by Pay and your wallet; RPC services may receive transfer details for fee estimation or broadcast. Blockchain activity is public and may be linkable to a person; on-chain does not mean anonymous. Harbor's hosting infrastructure can also receive ordinary access metadata, such as IP addresses. This separation is not a claim that Harbor processes no data.</p>
+    <h2>Storage and operational records</h2>
+    <p>Harbor uses browser storage and session cookies to remember certain preferences, sessions and recovery information. Swap recovery references can include a wallet address, operation identifier, order hash and status. Removing browser data or disconnecting may make recovery more difficult; neither action cancels a transaction or revokes a permit or approval.</p>
+    <p>Server-side operational records may include transaction and recovery details. Signed swap payloads can be retained in an encrypted journal for execution and reconciliation, including uncertain outcomes; some identifiers, status or expiry information may be stored without encryption. Encryption does not prevent an operator with access to both the data and the relevant key from reading it.</p>
+    <h2>Other services and public records</h2>
+    <p>Your wallet, blockchain RPC providers, swap infrastructure, hosting services and the independent fiat provider may receive information needed for the functions you use. For example, network providers may see your IP address and queried public addresses; swap providers may receive quote, order or signed authorization data. A permit-bearing request can expose spending authority before an order is submitted. Providers handle information under their own policies and may record connection or operational data.</p>
+    <p>Wallet addresses, transactions and token transfers recorded on public blockchains are publicly accessible and cannot be erased by Harbor. The embedded fiat provider may receive connection information when its content is loaded.</p>
+    <h2>Retention and your choices</h2>
+    <p>Session expiry is not a guarantee of deletion. Operational records, uncertain-order recovery data, provider records, filesystem remnants and backups may persist; precise retention and backup periods have not been established in this notice. You can disconnect your wallet or clear browser storage, but this does not erase blockchain history or records held by other services, and may remove recovery references.</p>
+    <p>Access, correction, deletion and other rights may apply depending on your location and the circumstances. The operator's contact and process for exercising those rights are not yet published. There is currently no stated self-service data export or deletion portal. This notice does not claim that the outstanding privacy and legal requirements have been completed.</p>
+    <p>These static legal pages do not initialize a wallet or call application APIs. See the <a href="/terms/">Terms</a> for transaction risks and third-party services.</p>
+  </main>
+  <footer><nav aria-label="Legal"><a href="/">Back to Harbor</a><a href="/terms/">Terms</a><a href="/privacy/" aria-current="page">Privacy</a></nav></footer>
+</body>
+</html>
