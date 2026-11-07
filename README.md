@@ -3,7 +3,7 @@
 A mini app for Nimiq Pay: buy and sell crypto by bank transfer without KYC up to **CHF 999 per rolling 30-day period**, swap Polygon tokens and send payments from your wallet.
 
 - **Bank:** fiat buying and selling through an embedded Mt Pelerin widget. No-KYC bank transfers are available up to CHF 999 in total exchange volume per rolling 30 days (or the equivalent in other currencies).
-- **Swap:** USDC ↔ USDT0 on Polygon through 1inch Fusion, with a fixed 15-minute order deadline.
+- **DeFi Swap:** USDC ↔ USDT0 on Polygon through 1inch Fusion, with a fixed 15-minute order deadline. Starts at 10 USDT0; configured quotes can be previewed without connecting a wallet. Review and execution require an authorized Polygon account. USDT0 uses exact-amount approval paid in POL, not unlimited permission; unused approval remains until spent or revoked.
 - **Pay:** POL, USDT0, USDC and WBTC transfers, with fee review and a fee-aware POL Max.
 
 ## Run locally
@@ -35,7 +35,7 @@ Copy `.env.example` and insert your own values only when needed. Never commit `.
 
 | Variable | Purpose |
 | --- | --- |
-| `VITE_MTPELERIN_KEY` | Your widget activation key. Browser-visible; restart or rebuild after changing it. Never use a server-secret key here. |
+| `VITE_MTPELERIN_KEY` | Your widget activation key. Browser-visible; restart or rebuild after changing it. Never use a server-secret key here. Bank links include referral `rfr=yZkss3Rs`, independently of this key. |
 | `ONEINCH_API_KEY` | Server-only credential for Fusion quotes. |
 | `FUSION_EXECUTION_ENABLED` | Defaults to `false`. Execution additionally requires HTTPS `APP_ORIGIN`, an HTTPS `POLYGON_RPC_URL`, a 1inch key and persistent encryption. |
 | `TOKEN_ENCRYPTION_KEY` | Persistent encryption key: base64 of 32 random bytes. Keep private and stable across restarts. |
@@ -67,9 +67,10 @@ npm run build
 npm test
 npx playwright install chromium
 npm run test:e2e
+npm run test:ui
 ```
 
-The offline tests exercise API/SDK control flow, deadline, approval, recovery and replay protections using synthetic provider/chain evidence and mocked signature recovery. Browser checks use simulated wallet/RPC responses at mobile and desktop widths and block external requests. They do not sign or send transactions. Linux may need additional Chromium system libraries; `PLAYWRIGHT_CHROMIUM_EXECUTABLE` can select an existing browser.
+The offline tests exercise API/SDK control flow, deadline, approval, recovery and replay protections using synthetic provider/chain evidence and mocked signature recovery. Browser checks use simulated wallet/RPC responses and block external requests; they do not sign or send transactions. `test:ui` checks anonymous previews, stale replies, refresh/error/slippage layout and wallet gates at 360/780/1000/1280px, plus exact approval and saved recovery at mobile/desktop widths. It writes ignored evidence under `artifacts/ui` and builds a separate widget fixture with an inert test key to verify the rendered referral. Linux may need additional Chromium system libraries; `PLAYWRIGHT_CHROMIUM_EXECUTABLE` can select an existing browser.
 
 These checks do **not** prove live widget activation, every wallet/WebView's compatibility, real gas costs, liquidity, resolver acceptance or on-chain settlement. No funded wallet is needed for tests. Install/download steps require internet access.
 

@@ -13,7 +13,8 @@
     "check": "tsc --noEmit",
     "test": "node --experimental-test-module-mocks --import tsx --test tests/current-swap-compatibility.test.ts tests/local-config.test.ts",
     "build": "tsc --noEmit && vite build",
-    "test:e2e": "node --import tsx scripts/browser-smoke.ts"
+    "test:e2e": "node --import tsx scripts/browser-smoke.ts",
+    "test:ui": "node scripts/run-ui-regressions.cjs"
   },
   "dependencies": {
     "@1inch/fusion-sdk": "2.4.16",

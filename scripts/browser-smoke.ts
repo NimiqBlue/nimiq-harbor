@@ -65,7 +65,7 @@ try {
     await page.getByRole('alert').filter({ hasText: 'activation key is not configured' }).waitFor();
     assert.equal(await page.locator('iframe').count(), 0);
     await page.getByRole('button', { name: 'Connect wallet', exact: true }).click();
-    await page.getByRole('button', { name: 'Swap', exact: true }).click();
+    await page.getByRole('button', { name: 'DeFi Swap', exact: true }).click();
     await page.getByRole('button', { name: '0.5%', exact: true }).click();
     await page.locator('#pay-amount').fill('999999999');
     const hint = page.locator('#swap-balance-hint');
@@ -77,13 +77,13 @@ try {
       return { font: hint.fontSize, lineHeight: hint.lineHeight, margin: style.marginTop, padding: style.paddingTop,
         deadlineControls: settings.querySelectorAll('[id*="deadline"], [name*="deadline"], .swap-deadline').length };
     });
-    assert.equal(swapMetrics.font, '16px');
-    assert.equal(swapMetrics.lineHeight, '24px');
+    assert.equal(swapMetrics.font, '15px');
+    assert.equal(swapMetrics.lineHeight, '23.25px');
     assert.equal(swapMetrics.margin, '10px');
     assert.equal(swapMetrics.padding, '0px');
     assert.equal(swapMetrics.deadlineControls, 0);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-    console.log(`PASS ${width}px Swap: 16px warning / 24px line-height, compact 10px settings margin, no deadline controls`);
+    console.log(`PASS ${width}px Swap: orange 15px warning / 23.25px line-height, compact 10px settings margin, no deadline controls`);
     await page.getByRole('button', { name: 'Bank', exact: true }).click();
     await page.getByRole('button', { name: '0x1111…1111', exact: true }).click();
     await page.getByRole('button', { name: 'Pay with wallet', exact: true }).click();

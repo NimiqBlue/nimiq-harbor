@@ -7,7 +7,7 @@ const widgetKey = configuredWidgetKey && !/^(undefined|null)$/i.test(configuredW
   ? configuredWidgetKey
   : undefined;
 const widgetUrl = new URL('https://widget.mtpelerin.com/');
-for (const [key, value] of Object.entries({ tab: 'sell', tabs: 'buy,sell,swap', bsc: 'EUR', bdc: 'USDT', wsc: 'USDT', wdc: 'USDC', ssc: 'USDT', sdc: 'EUR', crys: 'USDT,USDC,WBTC,POL', curs: 'EUR,USD', snet: 'matic_mainnet', dnet: 'matic_mainnet', net: 'matic_mainnet', nets: 'matic_mainnet' })) widgetUrl.searchParams.set(key, value);
+for (const [key, value] of Object.entries({ rfr: 'yZkss3Rs', tab: 'sell', tabs: 'buy,sell,swap', bsc: 'EUR', bdc: 'USDT', wsc: 'USDT', wdc: 'USDC', ssc: 'USDT', sdc: 'EUR', crys: 'USDT,USDC,WBTC,POL', curs: 'EUR,USD', snet: 'matic_mainnet', dnet: 'matic_mainnet', net: 'matic_mainnet', nets: 'matic_mainnet' })) widgetUrl.searchParams.set(key, value);
 
 if (widgetKey) widgetUrl.searchParams.set('_ctkn', widgetKey);
 

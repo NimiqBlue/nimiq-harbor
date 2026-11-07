@@ -439,3 +439,27 @@ html { scrollbar-gutter: stable; }
 .brand .asset-placeholder{width:44px;height:44px;border:1px solid currentColor;border-radius:8px;font-size:20px}
 .nimiq-pay-mark.asset-placeholder{width:auto;height:auto;font-size:12px}
 .nimiq-spinner{background:none;mask:none;-webkit-mask:none;border:3px solid #cbd5e1;border-top-color:#0582ca;border-radius:50%}
+
+/* Exact-amount approval and residual permission: scoped presentation only. */
+.approval-execution .approval-exact-amount{font-weight:700;overflow-wrap:anywhere}
+.approval-execution .approval-residual-notice{border-left:3px solid #e9b213;padding:4px 0 4px 12px;color:#1f2348;font-size:16px;line-height:1.5}
+.approval-execution .approval-revoke-panel{margin-top:16px;padding-top:12px;border-top:1px solid #dfe3eb}
+.approval-execution .approval-revoke-panel p{font-size:15px;line-height:1.5;overflow-wrap:anywhere}
+.approval-execution button.approval-revoke-action{display:block;width:100%;min-height:44px;white-space:normal;border:2px solid #e9b213;background:#fff;color:#1f2348;font-weight:700;margin:12px 0}
+.approval-execution button.approval-revoke-action:disabled{border-color:#dfe3eb;background:#f2f3f5;color:#747b88;cursor:not-allowed}
+.approval-execution .recovery-block code{overflow-wrap:anywhere;word-break:break-word}
+
+/* DeFi preview: scoped stable quote slots and high-contrast balance warning. */
+.swap-card .swap-balance-hint{background:#fff1e9;border:2px solid #c94716;border-left-width:5px;color:#842500;font-size:15px;line-height:1.55;font-weight:700;padding:12px 14px;border-radius:10px}
+.swap-card .quote-essentials{min-height:112px;box-sizing:border-box}
+.swap-card .quote-essentials>div{min-height:36px;align-items:start}
+.swap-card .quote-essentials dd{min-height:44px}
+.swap-card .swap-preview-status{min-height:24px;margin:6px 0 10px;font-size:13px;line-height:24px}
+.swap-card .swap-preview-status .text-button{min-height:0;padding:0 0 0 6px;line-height:24px;font-size:inherit;vertical-align:baseline}
+.swap-card .fusion-execution>button.primary{width:100%;min-height:48px;box-sizing:border-box}
+.swap-card #slippage-help{min-height:48px;line-height:24px;box-sizing:border-box}
+.swap-card #slippage-help.slippage-inline-warning{background:#fff7d8;border-left:3px solid #bc8700;color:#754e00;padding-left:8px;font-weight:700}
+.swap-card #slippage-help.slippage-inline-danger{background:#fff1e9;border-left:3px solid #c94716;color:#842500;padding-left:8px;font-weight:700}
+.swap-card .swap-rate-slot{min-height:32px}
+.swap-card .swap-rate-slot .exchange-rate{margin-top:0}
+@media(max-width:600px){.swap-card .quote-essentials{min-height:124px}.swap-card .quote-essentials dd{min-height:66px}.swap-card #slippage-help{min-height:72px}.swap-card .swap-preview-status{font-size:12px;white-space:nowrap}}
