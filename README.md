@@ -4,6 +4,7 @@ A mini app for Nimiq Pay: buy and sell crypto by bank transfer without KYC up to
 
 - **Bank:** fiat buying and selling through an embedded Mt Pelerin widget. No-KYC bank transfers are available up to CHF 999 in total exchange volume per rolling 30 days (or the equivalent in other currencies).
 - **DeFi Swap:** USDC ↔ USDT0 on Polygon through 1inch Fusion, with a fixed 15-minute order deadline. Starts at 10 USDT0; configured quotes can be previewed without connecting a wallet. Review and execution require an authorized Polygon account. USDT0 uses exact-amount approval paid in POL, not unlimited permission; unused approval remains until spent or revoked.
+- **Lightning:** sat/Lightning is enabled in Bank BUY, SELL and both SWAP directions. Pay a fixed-amount mainnet BOLT11 invoice using native Nimiq Pay (NIM or USDT, chosen in the wallet). The connected top-right wallet menu has a separate Lightning action; the footer's **Lightning** action provides native-only paste and recovery without a Polygon connection. Output-side receiving details remain your responsibility in the widget.
 - **Pay:** POL, USDT0, USDC and WBTC transfers, with fee review and a fee-aware POL Max.
 
 ## Run locally
@@ -53,9 +54,17 @@ node -e "console.log(require('node:crypto').randomBytes(32).toString('base64'))"
 
 Provider access may require activation and additional account configuration, not just an API key. Keep execution disabled while evaluating. That flag does **not** disable Pay transfers or wallet requests during manual use.
 
+## Lightning payment safety
+
+A wallet transaction hash and swap ID mean submitted, not settled. **Verified paid** requires an exact invoice/amount/hash match, redeemed contracts and a matching preimage from Fastspot; it describes only the Lightning leg, not Mt Pelerin credit or downstream payout. Unknown, pending and duplicate payments remain blocked against repayment. Only a freshly proven native pre-payment refusal allows a new explicit retry; old cancellation records stay blocked. Do not clear storage to unlock an uncertain invoice. Use the saved recovery export and wallet swap-ID status check instead.
+
+`test:lightning:browser` builds the actual source with an inert widget key and runs 23 settlement/capture/menu plus 24 cancellation/replay cases against the real local server/CSP. All invoices and responses are synthetic; external traffic is intercepted and no real payment is requested. Details, dependencies, deployment policy and limitations: [Lightning integration](docs/lightning.md).
+
 ## Privacy
 
-The Bank widget loads directly from Mt Pelerin. Harbor does not proxy its requests or receive the phone numbers, SMS codes, IBANs, identity documents, KYC data or order details entered within it. Those are handled by Mt Pelerin under its privacy policy.
+The Bank widget loads directly from Mt Pelerin. Harbor does not proxy its requests or collect the phone numbers, SMS codes, IBANs, identity documents or KYC data entered within it. Mt Pelerin handles those under its privacy policy. Harbor does receive the widget's documented `orderCreated` messages, which contain order details. The Lightning integration validates the exact iframe source and origin, then processes the order ID, input amount/network, expiration and invoice; it does not forward the order payload to Harbor's backend.
+
+Lightning recovery stores the invoice, payment hash, attempt/cancellation provenance, optional wallet transaction hash and swap ID, timestamps and status in this origin's browser localStorage (`harbor.lightning.v2`). Invoice capture alone is not persisted. Recovery checks send the swap ID to `https://api.go.fastspot.io` (without credentials or referrer); that service also sees connection metadata. Paying sends the invoice to Nimiq Pay only after an explicit click and wallet approval. Recovery exports contain payment details: keep them private. Clearing storage, changing origins or using another device loses local duplicate-payment protection; it never proves non-payment or authorizes repayment.
 
 Pay and Swap separately process wallet addresses and operational data. Copied recipient/amount details may be shared with RPC services; blockchain activity is public and not necessarily anonymous. Hosting infrastructure may receive ordinary access metadata such as IP addresses. See the in-app Privacy page.
 
@@ -68,6 +77,7 @@ npm test
 npx playwright install chromium
 npm run test:e2e
 npm run test:ui
+npm run test:lightning:browser
 ```
 
 The offline tests exercise API/SDK control flow, deadline, approval, recovery and replay protections using synthetic provider/chain evidence and mocked signature recovery. Browser checks use simulated wallet/RPC responses and block external requests; they do not sign or send transactions. `test:ui` checks anonymous previews, stale replies, refresh/error/slippage layout and wallet gates at 360/780/1000/1280px, plus exact approval and saved recovery at mobile/desktop widths. It writes ignored evidence under `artifacts/ui` and builds a separate widget fixture with an inert test key to verify the rendered referral. Linux may need additional Chromium system libraries; `PLAYWRIGHT_CHROMIUM_EXECUTABLE` can select an existing browser.

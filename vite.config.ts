@@ -10,6 +10,7 @@ export default defineConfig(({ mode }) => {
   if (!/^\d+$/.test(apiPort) || Number(apiPort) < 1024 || Number(apiPort) > 65535) throw new Error('Invalid API PORT');
   return {
     plugins: [react()],
+    resolve: { alias: { stream: 'stream-browserify', events: 'events/' } },
     define: { 'process.env.NODE_DEBUG': 'undefined', 'process.stderr': 'undefined' },
     server: { host: '127.0.0.1', port: 14173, strictPort: true, proxy: { '/api': `http://127.0.0.1:${apiPort}` } },
     build: { sourcemap: false },

@@ -11,7 +11,8 @@
     "dev": "node --env-file-if-exists=.env --import tsx scripts/dev.ts",
     "start": "node --env-file-if-exists=.env --import tsx src/server/start.ts",
     "check": "tsc --noEmit",
-    "test": "node --experimental-test-module-mocks --import tsx --test tests/current-swap-compatibility.test.ts tests/local-config.test.ts",
+    "test": "node --experimental-test-module-mocks --import tsx --test tests/current-swap-compatibility.test.ts tests/local-config.test.ts tests/lightning.test.cjs",
+    "test:lightning:browser": "node scripts/run-lightning-regressions.cjs",
     "build": "tsc --noEmit && vite build",
     "test:e2e": "node --import tsx scripts/browser-smoke.ts",
     "test:ui": "node scripts/run-ui-regressions.cjs"
@@ -19,11 +20,17 @@
   "dependencies": {
     "@1inch/fusion-sdk": "2.4.16",
     "@fastify/static": "10.1.10",
+    "@nimiq/mini-app-sdk": "0.2.5",
     "assert": "2.1.0",
     "axios": "1.20.0",
+    "bolt11": "1.4.2",
+    "buffer": "6.0.3",
+    "events": "3.3.0",
     "fastify": "5.12.7",
+    "process": "0.11.10",
     "react": "19.3.1",
     "react-dom": "19.3.1",
+    "stream-browserify": "3.0.0",
     "viem": "2.57.7",
     "zod": "4.6.7"
   },
