@@ -8,7 +8,7 @@ process.env.APP_ORIGIN ||= `http://localhost:${process.env.PORT || '18787'}`;
 const app = createApp();
 const root = resolve('dist');
 app.addHook('onSend', async (_req, reply) => {
-  reply.header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://api.go.fastspot.io https://polygon-rpc.com https://polygon.drpc.org https://rpc-mainnet.matic.quiknode.pro; frame-src https://widget.mtpelerin.com; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
+  reply.header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src 'self' https://api.go.fastspot.io https://polygon-rpc.com https://polygon.drpc.org https://eth.drpc.org https://rpc-mainnet.matic.quiknode.pro; frame-src https://widget.mtpelerin.com; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'");
   reply.header('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
 });
 if (existsSync(root)) {

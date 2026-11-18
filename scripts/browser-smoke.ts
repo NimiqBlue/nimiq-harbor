@@ -59,7 +59,7 @@ try {
       } };
     });
     await page.goto(origin);
-    await page.getByRole('heading', { name: 'Swap tokens' }).waitFor();
+    assert.equal(await page.getByRole('button', { name: 'Bank', exact: true }).getAttribute('aria-current'), 'page');
     assert.equal(await page.locator('img[src*="/brands/"], img[src*="/icons/"], img[src*="/harbor"]').count(), 0);
     await page.getByRole('button', { name: 'Bank', exact: true }).click();
     await page.getByRole('alert').filter({ hasText: 'activation key is not configured' }).waitFor();
@@ -87,10 +87,10 @@ try {
     await page.getByRole('button', { name: 'Bank', exact: true }).click();
     await page.getByRole('button', { name: '0x1111…1111', exact: true }).click();
     await page.getByRole('button', { name: 'Pay with wallet', exact: true }).click();
-    const dialog = page.getByRole('dialog', { name: 'Send Polygon tokens' });
+    const dialog = page.getByRole('dialog', { name: 'Pay with wallet' });
     await dialog.waitFor();
     await dialog.getByLabel('Recipient address').fill('0x2222222222222222222222222222222222222222');
-    for (const token of ['USDT0', 'USDC', 'POL', 'WBTC']) {
+    for (const token of ['USDT0', 'USDC', 'POL']) {
       const button = dialog.getByRole('button', { name: token, exact: true });
       await button.click(); assert.equal(await button.getAttribute('aria-pressed'), 'true');
     }
@@ -98,7 +98,13 @@ try {
     await dialog.getByRole('button', { name: /Max/ }).click();
     await page.waitForFunction(() => (document.querySelector('input[inputmode="decimal"]') as HTMLInputElement)?.value !== '');
     await dialog.getByRole('button', { name: 'Review transfer', exact: true }).click();
-    await dialog.getByText(/Estimated network fee/).waitFor();
+    await dialog.getByText(/network fee/i).waitFor();
+    await dialog.getByRole('button', { name: 'Ethereum', exact: true }).click();
+    for (const token of ['ETH', 'XAUt', 'PAXG', 'EURC', 'USDT', 'USDC']) await dialog.getByRole('button', { name: token, exact: true }).waitFor();
+    assert.equal(await dialog.getByRole('button', { name: 'WBTC', exact: true }).count(), 0);
+    await dialog.getByRole('button', { name: 'Switch wallet to Ethereum', exact: true }).waitFor();
+    await dialog.getByRole('tab', { name: 'Pay Lightning invoice', exact: true }).click();
+    await dialog.getByRole('textbox', { name: 'Lightning invoice', exact: true }).waitFor();
     assert.deepEqual(await page.evaluate(() => (window as unknown as { forbiddenCalls: string[] }).forbiddenCalls), []);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     assert.deepEqual(errors, []);

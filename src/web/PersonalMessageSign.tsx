@@ -38,14 +38,18 @@ export function PersonalMessageSign({ wallet }: { wallet: Wallet }) {
     } finally { signing = false; setBusy(false); }
   }
   return <section className="personal-message-sign" aria-labelledby="personal-message-title">
-    <h2 id="personal-message-title" tabIndex={-1}>Sign a message</h2>
-    <p>Paste the exact message. Spaces and line breaks are preserved. Nothing is sent to Harbor.</p>
+    <div className="sign-brand"><span aria-hidden="true">H</span><strong>Nimiq Harbor</strong></div>
+    <div className="sign-intro">
+      <span className="sign-title-icon" aria-hidden="true"><svg viewBox="0 0 28 28" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m7 17 2-6L19 1l4 4-10 10-6 2Zm3-7 4 4M2 24c3-11 5-5 5-3s3 1 5-1 4 1 10 0" /></svg></span>
+      <h2 id="personal-message-title" tabIndex={-1}>Sign a message</h2>
+      <p>Paste the exact message. Spaces and line breaks are preserved. Nothing is sent to Harbor.</p>
+    </div>
     <p className="sign-warning"><strong>Only sign messages you trust. A signature can authorize actions.</strong></p>
     <p className="sign-selected-account">Selected account<code>{wallet.account ?? 'Connect a wallet first.'}</code></p>
     <label htmlFor="personal-message">Message to sign</label>
-    <textarea id="personal-message" rows={5} value={message} disabled={busy} onChange={event => { epoch.current++; setMessage(event.target.value); setSignature(''); setStatus(''); }} />
+    <textarea id="personal-message" rows={5} placeholder="Paste the message to sign…" value={message} disabled={busy} onChange={event => { epoch.current++; setMessage(event.target.value); setSignature(''); setStatus(''); }} />
     <p>Review it in your wallet before confirming.</p>
-    <button type="button" className="secondary full" disabled={busy || !message || !wallet.provider || !wallet.account} onClick={() => void sign()}>{busy ? 'Waiting for wallet…' : 'Sign message with selected wallet'}</button>
+    <button type="button" className="primary full sign-action" disabled={busy || !message || !wallet.provider || !wallet.account} onClick={() => void sign()}>{busy ? 'Waiting for wallet…' : 'Sign message with selected wallet'}</button>
     {status && <p role="status">{status}</p>}
     {signature && <><label htmlFor="personal-signature">Signature · hex</label><textarea id="personal-signature" readOnly rows={4} value={signature} /><button type="button" className="secondary full" onClick={() => { void navigator.clipboard.writeText(signature).then(() => setStatus('Signature copied.'), () => setStatus('Copy failed. Select and copy the signature manually.')); }}>Copy signature</button></>}
   </section>;

@@ -1,25 +1,61 @@
-.manual-send-dialog.sign-message-dialog {
-  inset: calc(var(--sign-viewport-top, 0px) + 12px) 12px auto;
+dialog.manual-send-dialog.sign-message-dialog {
+  --sign-pad: 24px;
+  --sign-accent: #18a7ea;
+  inset: calc(var(--sign-viewport-top, 0px) + 16px) 0 auto;
   margin: 0 auto;
-  width: min(calc(100% - 24px), 560px);
-  height: auto;
-  max-height: calc(var(--sign-viewport-height, 100dvh) - 24px);
-  padding: 24px;
-  overflow-y: auto;
+  width: min(496px, calc(100% - 32px));
+  height: fit-content;
+  max-height: calc(var(--sign-viewport-height, 100dvh) - 32px);
+  padding: 26px var(--sign-pad) 0;
+  border: 1px solid #e8eaf3;
+  border-radius: 24px;
+  background: #fff;
+  color: #141b42;
+  box-shadow: 0 18px 70px #14245930;
+  overflow: hidden auto;
   overscroll-behavior: contain;
   scroll-padding: 18px;
   -webkit-overflow-scrolling: touch;
 }
+.sign-message-dialog::backdrop { background: #20284655; backdrop-filter: blur(4px); }
+.sign-message-dialog::after {
+  content: '';
+  display: block;
+  height: 56px;
+  margin: 26px calc(-1 * var(--sign-pad)) 0;
+  pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1000 120' preserveAspectRatio='none'%3E%3Cpath fill='%2318a7ea' opacity='.20' d='M0 6C240 20 280 170 580 108S820 50 1000 0V120H0Z'/%3E%3Cpath fill='%2318a7ea' opacity='.19' d='M0 120C170 0 270 100 500 115S800 10 1000 36V120Z'/%3E%3C/svg%3E") center bottom / 100% 100% no-repeat;
+}
 .sign-message-dialog .personal-message-sign { margin: 0; padding: 0; border: 0; min-width: 0; }
-.sign-message-dialog h2 { margin: 0 44px 18px 0; font-size: 24px; line-height: 1.25; }
-.sign-message-dialog p { font-size: 16px; line-height: 1.5; margin: 12px 0; }
-.sign-message-dialog .sign-warning { background: #fff7df; border-radius: 10px; padding: 12px; }
-.sign-message-dialog .sign-selected-account code { display: block; margin-top: 4px; font-size: 14px; line-height: 1.5; word-break: break-all; }
-.sign-message-dialog textarea { min-width: 0; max-width: 100%; font: 16px/1.5 ui-monospace, monospace; padding: 10px 12px; border: 1px solid #9ba3b0; border-radius: 8px; min-height: 112px; }
-.sign-message-dialog label { font-size: 16px; }
-.sign-message-dialog .sign-dialog-close { position: sticky; top: 0; z-index: 1; display: block; float: right; width: 44px; min-height: 44px; margin: -10px -10px 0 0; background: white; border-radius: 50%; font-size: 28px; line-height: 1; }
+.sign-message-dialog .sign-brand { display: flex; align-items: center; gap: 12px; margin: 0 44px 28px 4px; color: #11183a; font-size: 22px; letter-spacing: -.7px; }
+.sign-brand span { display: grid; place-items: center; flex: 0 0 32px; height: 32px; border-radius: 10px; color: #143c6d; background: #eaf8ff; font-weight: 750; }
+.sign-brand strong { font-weight: 750; }
+.sign-message-dialog .sign-intro { --sign-emblem: 60px; position: relative; padding-left: calc(var(--sign-emblem) + 16px); }
+.sign-message-dialog h2 { margin: 0 0 8px; padding-top: 4px; color: #111737; font-size: 24px; font-weight: 750; line-height: 1.17; letter-spacing: -.8px; }
+.sign-message-dialog .sign-title-icon { position: absolute; inset: 0 auto auto 0; width: var(--sign-emblem); height: calc(var(--sign-emblem) + 8px); background: #eaf8ff; color: var(--sign-accent); display: grid; place-items: center; clip-path: polygon(50% 0, 96% 23%, 96% 77%, 50% 100%, 4% 77%, 4% 23%); }
+.sign-title-icon svg { width: 60%; height: 60%; }
+.sign-message-dialog p { font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; margin: 12px 0; }
+.sign-message-dialog .sign-intro p { margin: 0 0 24px; }
+.sign-message-dialog .sign-warning { position: relative; background: #fff6df; border-radius: 15px; padding: 16px 16px 16px 54px; margin: 22px 0 18px; }
+.sign-message-dialog .sign-warning::before { content: '!'; position: absolute; left: 17px; top: 16px; border: 2px solid #edb31e; border-radius: 8px; color: #9b6700; width: 24px; height: 27px; display: grid; place-items: center; font-size: 21px; font-weight: 800; }
+.sign-message-dialog .sign-warning strong { font-size: 15px; }
+.sign-message-dialog .sign-selected-account { font-weight: 650; }
+.sign-message-dialog .sign-selected-account code { display: block; margin-top: 7px; padding: 10px 12px; border-radius: 10px; background: #f5f4fa; border: 1px solid #eeedf5; color: #172041; font-size: 12px; font-weight: 400; line-height: 1.5; overflow-wrap: anywhere; }
+.sign-message-dialog textarea { box-sizing: border-box; display: block; width: 100%; min-width: 0; max-width: 100%; margin-top: 8px; font-family: inherit; font-size: 16px; line-height: 1.5; padding: 12px 14px; border: 1px solid #c9cbd6; border-radius: 12px; background: #fff; color: #182140; resize: vertical; }
+.sign-message-dialog #personal-message { min-height: 162px; }
+.sign-message-dialog label { color: #172041; font-size: 15px; font-weight: 650; }
+.sign-message-dialog button:focus-visible, .sign-message-dialog textarea:focus-visible { outline: 2px solid var(--sign-accent); outline-offset: 2px; }
+.sign-message-dialog button.sign-dialog-close { position: absolute; right: 15px; top: 16px; z-index: 2; width: 44px; min-height: 44px; margin: 0; padding: 0; border: 0; background: transparent; color: #131d40; border-radius: 50%; font-size: 26px; line-height: 1; }
+.sign-message-dialog button.sign-action { min-height: 52px; margin-top: 23px; padding: 12px 15px; border: 0; border-radius: 24px; background: linear-gradient(115deg, #04bce9, #078ff0 36%, #4331ee); color: white; font-size: 16px; font-weight: 700; box-shadow: 0 5px 12px #218be41a; }
+.sign-message-dialog button.sign-action:disabled { background: #e9edf4; color: #667187; box-shadow: none; opacity: 1; cursor: not-allowed; }
 .sign-message-dialog button.secondary { font-size: 16px; min-height: 48px; }
-@media (max-width: 600px) {
-  .manual-send-dialog.sign-message-dialog { padding: 18px; }
-  .sign-message-dialog h2 { font-size: 22px; }
+@media (max-width: 420px) {
+  dialog.manual-send-dialog.sign-message-dialog { --sign-pad: 18px; inset-block-start: calc(var(--sign-viewport-top, 0px) + 10px); width: calc(100vw - 20px); max-height: calc(var(--sign-viewport-height, 100dvh) - 20px); padding-top: 20px; }
+  .sign-message-dialog .sign-brand { font-size: 20px; margin-bottom: 22px; }
+  .sign-message-dialog .sign-intro { --sign-emblem: 50px; }
+  .sign-message-dialog h2 { font-size: 21px; }
+  .sign-message-dialog .sign-intro p { font-size: 13px; }
+  .sign-message-dialog .sign-warning { padding: 13px 13px 13px 46px; }
+  .sign-message-dialog .sign-warning::before { left: 12px; top: 13px; width: 22px; }
+  .sign-message-dialog::after { height: 40px; margin-top: 20px; }
 }

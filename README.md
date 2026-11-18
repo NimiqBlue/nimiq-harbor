@@ -2,10 +2,10 @@
 
 A mini app for Nimiq Pay: buy and sell crypto by bank transfer without KYC up to **CHF 999 per rolling 30-day period**, swap Polygon tokens and send payments from your wallet.
 
-- **Bank:** fiat buying and selling through an embedded Mt Pelerin widget. No-KYC bank transfers are available up to CHF 999 in total exchange volume per rolling 30 days (or the equivalent in other currencies).
+- **Bank:** Buy, Sell and Swap through Mt Pelerin. Opens on Sell (Lightning to EUR). Buy excludes Lightning; Sell and Swap include it. Native Bitcoin replaces WBTC in the widget.
 - **DeFi Swap:** USDC ↔ USDT0 on Polygon through 1inch Fusion, with a fixed 15-minute order deadline. Starts at 10 USDT0; configured quotes can be previewed without connecting a wallet. Review and execution require an authorized Polygon account. USDT0 uses exact-amount approval paid in POL, not unlimited permission; unused approval remains until spent or revoked.
-- **Lightning:** sat/Lightning is enabled in Bank BUY, SELL and both SWAP directions. Pay a fixed-amount mainnet BOLT11 invoice using native Nimiq Pay (NIM or USDT, chosen in the wallet). The connected top-right wallet menu has a separate Lightning action; the footer's **Lightning** action provides native-only paste and recovery without a Polygon connection. Output-side receiving details remain your responsibility in the widget.
-- **Pay:** POL, USDT0, USDC and WBTC transfers, with fee review and a fee-aware POL Max.
+- **Lightning:** In the wallet menu, open **Pay with wallet → Pay Lightning invoice**. Pay a fixed-amount mainnet BOLT11 invoice with NIM or USDT in Nimiq Pay. Harbor can capture a matching Bank Sell/Swap invoice or accept a pasted one.
+- **Pay:** Send USDT0, USDC or POL on Polygon; ETH, XAUt, PAXG, EURC, USDT or USDC on Ethereum. Review the chain, amount and fees before confirming. The public source uses text identifiers in place of production token artwork.
 
 ## Run locally
 
@@ -86,7 +86,7 @@ These checks do **not** prove live widget activation, every wallet/WebView's com
 
 An optional recovery path verifies operator-signed attestations. Its public verification key is included, but the signing service and private key are not. Other operators must configure their own trust/signing process; missing evidence leaves recovery unavailable, never implicitly approved.
 
-This source release excludes production credentials, private history, runtime data and artwork/fonts without cleared redistribution rights. Text identifiers and system fonts replace excluded branding. Experimental WBTC Swap support is not included; WBTC remains available in Pay. Dependency security patches and portable launch configuration intentionally differ from the original production packaging.
+This source release excludes production credentials, private history, runtime data and artwork/fonts without cleared redistribution rights. Text identifiers and system fonts replace excluded branding. Experimental WBTC Swap support is not included; WBTC is not available in Pay. Dependency security patches and portable launch configuration intentionally differ from the original production packaging.
 
 ## License
 

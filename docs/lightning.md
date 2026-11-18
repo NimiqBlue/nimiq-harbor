@@ -2,11 +2,11 @@
 
 ## Scope and source layout
 
-The standalone browser implementation is ported from the production cancellation/recovery release, not reconstructed from a minified bundle. `src/web/lightning/lightning.js` mounts one dialog outside the React root and observes the root to insert actions into the connected wallet menu and footer. It never inserts a disconnected header bolt or an above-Bank panel. React StrictMode therefore does not double-mount it. Polygon Pay and the DeFi execution/backend flows remain separate.
+The Lightning panel lives inside the shared **Pay with wallet** dialog. There is no separate menu action or footer shortcut. The panel preserves the existing recovery ledger and stays mounted when switching payment methods.
 
 `settlement.js` validates invoices and verifies the read-only settlement response. `rejection.js` defines the narrowly allowed cancellation/recovery classifications. The production logic and stylesheet are retained; imports are adapted to installed packages. `browser-globals.js` supplies local Buffer/process/global shims before bolt11 evaluates; Vite aliases stream/events to browser implementations. No CDN scripts, generated production bundles or private payment evidence are required.
 
-The widget retains `rfr=yZkss3Rs`, all three tabs, existing Polygon defaults (`net`, `snet`, `dnet`), and adds `sat` / `lightning_mainnet` only to the global currency/network choices. This allows BUY output, SELL input and both SWAP directions. These defaults are not directional restrictions. The Lightning action pays an invoice; it does not implement receiving Lightning into NIM or choose output-side receiving details for you. Bank stays fail-closed without your browser-visible `VITE_MTPELERIN_KEY`.
+Bank uses separate Buy, Sell and Swap widget instances and keeps visited modes mounted. Buy excludes Lightning; Sell and Swap include it and default to Lightning as the source. The widget retains its configured referral. Bank stays fail-closed without your browser-visible `VITE_MTPELERIN_KEY`.
 
 ## Capture and explicit payment
 

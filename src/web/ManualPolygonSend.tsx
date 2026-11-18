@@ -1,245 +1,155 @@
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { useEffect, useRef, useState } from 'react';
-import { createPublicClient, encodeFunctionData, formatUnits, http, isAddress, parseUnits } from 'viem';
-import { polygon } from 'viem/chains';
-import { TOKENS } from '../swap/registry';
-import { authorizedAccount, type HarborProvider } from './wallet';
-import { canUseIndependentEstimate, independentEstimate } from './gas-fallback';
-type Wallet = { provider: HarborProvider | null; account: `0x${string}` | null; selectionRevision: number };
-type Token = 'USDT' | 'USDC' | 'WBTC' | 'POL';
-const WBTC = '0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6' as const;
-const decimals = (t: Token) => t === 'POL' ? 18 : t === 'WBTC' ? 8 : 6;
-const label = (t: Token) => t === 'USDT' ? 'USDT0' : t;
-const contract = (t: Exclude<Token, 'POL'>) => t === 'WBTC' ? WBTC : TOKENS[t].address;
-type Draft = { from: `0x${string}`; to: `0x${string}`; token: Token; amount: string; units: bigint; data: `0x${string}`; gas: `0x${string}`; fee: bigint; balance: bigint };
-const balanceAbi = [{ type: 'function', name: 'balanceOf', stateMutability: 'view', inputs: [{ name: 'account', type: 'address' }], outputs: [{ type: 'uint256' }] }] as const;
-const abi = [{ type: 'function', name: 'transfer', stateMutability: 'nonpayable', inputs: [{ name: 'to', type: 'address' }, { name: 'value', type: 'uint256' }], outputs: [{ name: '', type: 'bool' }] }] as const;
-let pending = false;
-function quantity(v: unknown) { if (typeof v !== 'string' || !/^0x[0-9a-f]+$/i.test(v)) throw Error('Read unavailable'); return BigInt(v); }
-function rejected(e: unknown) { const v = e as {code?: unknown; data?: {originalError?: {code?: unknown}}} | null; return v?.code === 4001 || (v?.code === -32603 && v.data?.originalError?.code === 4001); }
-export function ManualBankSend({ wallet, onOpen, restoreFocus }: { wallet: Wallet; onOpen: () => void; restoreFocus: () => void }) {
-  const dialog = useRef<HTMLDialogElement>(null), trigger = useRef<HTMLButtonElement>(null);
-  const [to, setTo] = useState(''), [amount, setAmount] = useState(''), [token, setToken] = useState<Token>('USDT');
-  const [opened, setOpened] = useState(false);
-  const [visibleBalance, setVisibleBalance] = useState<string | null>(null);
-  const [balanceRevision, setBalanceRevision] = useState(0);
-  const [draft, setDraft] = useState<Draft | null>(null), [busy, setBusy] = useState(false), [message, setMessage] = useState(''), [hash, setHash] = useState<string | null>(null);
-  const balanceEpoch = useRef(0);
-  const epoch = useRef(0), flight = useRef(false), latest = useRef(wallet); latest.current = wallet;
-  const invalidate = () => { epoch.current++; setDraft(null); };
-  useEffect(() => {
-    const p = wallet.provider;
-    setDraft(null);
-    const changed = () => { epoch.current++; balanceEpoch.current++; setVisibleBalance(null); setBalanceRevision(value => value + 1); setDraft(null); setMessage('Wallet account or network changed. Review again.'); };
-    for (const name of ['accountsChanged', 'chainChanged', 'disconnect']) p?.on?.(name, changed);
-    return () => { epoch.current++; for (const name of ['accountsChanged', 'chainChanged', 'disconnect']) p?.removeListener?.(name, changed); };
-  }, [wallet.provider, wallet.account, wallet.selectionRevision]);
-  useEffect(() => {
-    let active = true;
-    const balanceStamp = ++balanceEpoch.current;
-    setVisibleBalance(null);
-    if (!opened || !wallet.account || !wallet.provider) return () => { active = false; };
-    const client = createPublicClient({ chain: polygon, transport: http(undefined, { timeout: 15000, retryCount: 0 }) });
-    (token === 'POL' ? client.getBalance({address: wallet.account}) : client.readContract({ address: contract(token), abi: balanceAbi, functionName: 'balanceOf', args: [wallet.account] }))
-      .then(value => { if (active && balanceEpoch.current === balanceStamp) setVisibleBalance(formatUnits(value, decimals(token))); })
-      .catch(() => { if (active && balanceEpoch.current === balanceStamp) setVisibleBalance('unavailable'); });
-    return () => { active = false; };
-  }, [opened, wallet.account, wallet.provider, wallet.selectionRevision, token, balanceRevision]);
-  async function polBalance(from: `0x${string}`) {
-    try {
-      const client = createPublicClient({ chain: polygon, transport: http(undefined, { timeout: 15000, retryCount: 0 }) });
-      return await client.getBalance({ address: from });
-    } catch { throw Error('Could not read your POL balance on Polygon. Check your connection and review again. No transaction was requested.'); }
-  }
-  async function read(p: HarborProvider, method: string, params?: unknown[], compare = false) {
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const failures: Record<string, string> = {
-      eth_accounts: 'Could not read authorized wallet accounts. Unlock your wallet and review again.',
-      eth_chainId: 'Could not read the wallet network. Select Polygon mainnet and review again.',
-      eth_getBalance: 'Could not read your POL balance. No transaction was requested.',
-      eth_call: 'Could not read your token balance. No transaction was requested.',
-      eth_estimateGas: 'Could not estimate this transfer. Check the token, recipient and wallet before reviewing again. No transaction was requested.',
-      eth_gasPrice: 'Could not read the Polygon network fee. No transaction was requested.',
-    };
-    let timedOut = false;
-    try { return await Promise.race([p.request(params ? {method, params} : {method}), new Promise<never>((_, reject) => { timer = setTimeout(() => { timedOut = true; reject(Error('Read unavailable')); }, 15000); })]); }
-    catch (error) {
-      if (method === 'eth_estimateGas') {
-        // Keep only allowlisted numeric codes; provider text and request data can contain PII.
-        const allowed = new Set([4001, 4100, 4200, 4900, 4901, -32700, -32600, -32601, -32602, -32603, -32000, -32001, -32002, -32003, -32004, -32005]);
-        const e = error as { code?: unknown; data?: { originalError?: { code?: unknown } } } | null;
-        const code = typeof e?.code === 'number' && allowed.has(e.code) ? e.code : null;
-        const nested = typeof e?.data?.originalError?.code === 'number' && allowed.has(e.data.originalError.code) ? e.data.originalError.code : null;
-        const entry = { time: new Date().toISOString(), method: 'eth_estimateGas', outcome: timedOut ? 'timeout' : 'provider-error', code, nestedCode: nested };
-        try { sessionStorage.setItem('harbor.estimateGas.lastError.v1', JSON.stringify(entry)); } catch { /* storage may be unavailable */ }
-        console.warn('[Harbor] gas estimation diagnostic', entry);
-        // Independent estimation is automatic only for eligible wallet failures.
-        const report = (comparison?: string) => {
-          try { void fetch('/api/diagnostics/review-gas', {
-            method: 'POST', credentials: 'omit', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ method: entry.method, outcome: entry.outcome, code, nestedCode: nested, ...(comparison ? {comparison} : {}) }), keepalive: true,
-          }).catch(() => {}); } catch { /* best effort */ }
-        };
-        if (compare && params && canUseIndependentEstimate(error, timedOut)) {
-          try {
-            const gas = await independentEstimate(params[0] as { from: `0x${string}`; to: `0x${string}`; data?: `0x${string}`; value?: `0x${string}` });
-            report('success');
-            return gas;
-          } catch {
-            report('unavailable');
-            throw Error('Could not verify the independent Polygon estimate after the wallet estimate failed. No transaction was requested. Try reviewing again later.');
-          }
-        }
-        report();
-      }
-      if (method === 'eth_gasPrice' && compare && canUseIndependentEstimate(error, timedOut)) {
-        try {
-          const client = createPublicClient({ chain: polygon, transport: http(undefined, { timeout: 15000, retryCount: 0 }) });
-          const price = await client.getGasPrice();
-          if (price <= 0n) throw Error('Invalid price');
-          return `0x${price.toString(16)}`;
-        } catch { throw Error('Could not read the network fee from the independent Polygon RPC. No transaction was requested. Try again later.'); }
-      }
-      throw Error(failures[method] ?? 'Could not verify the transfer. No transaction was requested.');
-    }
-    finally { clearTimeout(timer); }
-  }
-  async function preflight(p: HarborProvider, from: string, stamp: number, revision: number) {
-    const accounts = await read(p, 'eth_accounts'), chain = await read(p, 'eth_chainId');
-    if (epoch.current !== stamp || latest.current.provider !== p || latest.current.selectionRevision !== revision || latest.current.account?.toLowerCase() !== from.toLowerCase() || !authorizedAccount(accounts, from)) throw Error('Selected account changed or is not authorized. Review again.');
-    if (chain !== '0x89') throw Error('Switch your wallet to Polygon mainnet before continuing.');
-  }
-  async function tokenBalance(d: Pick<Draft, 'from' | 'token' | 'units'>) {
-    // Some injected wallets do not support eth_call. Read Polygon independently.
-    if (d.token === 'POL') return;
-    let tokens: bigint;
-    try {
-      const client = createPublicClient({ chain: polygon, transport: http(undefined, { timeout: 15000, retryCount: 0 }) });
-      tokens = await client.readContract({ address: contract(d.token), abi: balanceAbi, functionName: 'balanceOf', args: [d.from] });
-    } catch { throw Error('Could not read your token balance on Polygon. Check your connection and review again. No transaction was requested.'); }
-    if (tokens < d.units) throw Error(`Insufficient ${label(d.token)} balance in the selected wallet. Available: ${formatUnits(tokens, decimals(d.token))}. Choose the funded account or lower the amount.`);
-  }
-  async function balances(d: Pick<Draft, 'from' | 'token' | 'units' | 'fee'>) {
-    await tokenBalance(d);
-    const balance = await polBalance(d.from);
-    if (balance < d.fee + (d.token === 'POL' ? d.units : 0n)) throw Error(d.token === 'POL' ? 'Insufficient POL for the transfer amount plus the estimated network fee. Lower the amount or add POL and review again.' : 'Insufficient POL for the estimated network fee. Add POL and review again.');
-    return balance;
-  }
-  async function useMax() {
-    if (flight.current || pending) return;
-    flight.current = true; pending = true; setBusy(true); setMessage(''); invalidate();
-    const p = wallet.provider, from = wallet.account, stamp = epoch.current, revision = wallet.selectionRevision;
-    try {
-      if (!p || !from) throw Error('Connect and select a wallet account in the header first.');
-      if (token !== 'POL' || !isAddress(to) || /^0x0{40}$/i.test(to)) throw Error('Enter a valid nonzero Polygon recipient address first.');
-      await preflight(p, from, stamp, revision);
-      const balance = await polBalance(from);
-      if (balance <= 1n) throw Error('Insufficient POL for the transfer amount plus the estimated network fee.');
-      const price = quantity(await read(p, 'eth_gasPrice', undefined, true));
-      const estimate = quantity(await read(p, 'eth_estimateGas', [{from, to, value: '0x1'}], true));
-      if (price <= 0n || estimate <= 0n) throw Error('Could not read the network fee.');
-      const fee = ((estimate * 120n + 99n) / 100n) * price;
-      if (balance <= fee) throw Error('Insufficient POL for the transfer amount plus the estimated network fee.');
-      let units = balance - fee;
-      // Contract recipients may consume different gas for different values. Only
-      // publish a candidate that was itself estimated, reducing it when needed.
-      let verified = false;
-      for (let i = 0; i < 6; i++) {
-        await preflight(p, from, stamp, revision);
-        const actual = quantity(await read(p, 'eth_estimateGas', [{from, to, value: `0x${units.toString(16)}`}], true));
-        if (actual <= 0n) throw Error('Could not read the network fee.');
-        const actualFee = ((actual * 120n + 99n) / 100n) * price;
-        if (balance <= actualFee) throw Error('Insufficient POL for the transfer amount plus the estimated network fee.');
-        if (units + actualFee <= balance) { verified = true; break; }
-        units = balance - actualFee;
-      }
-      if (!verified) throw Error('Could not calculate Max for this recipient. Review again.');
-      await preflight(p, from, stamp, revision);
-      setAmount(formatUnits(units, 18));
-    } catch (error) {
-      if (epoch.current === stamp) setMessage(error instanceof Error && /^(Enter|Connect|Selected|Switch|Insufficient|Could not|Network fee changed)/.test(error.message) ? error.message : 'Could not calculate Max. No transaction was requested.');
-    } finally { flight.current = false; pending = false; setBusy(false); }
-  }
-  async function act(send: boolean) {
-    if (flight.current || pending) return;
-    flight.current = true; pending = true; setBusy(true); setMessage('');
-    const p = wallet.provider, from = wallet.account, stamp = epoch.current, revision = wallet.selectionRevision;
-    let attempted = false;
-    try {
-      if (!p || !from) throw Error('Connect and select a wallet account in the header first.');
-      if (!send) {
-        setDraft(null); setHash(null);
-        if (!isAddress(to) || /^0x0{40}$/i.test(to)) throw Error('Enter a valid nonzero Polygon recipient address.');
-        const precision = decimals(token);
-        if (!(new RegExp(`^(?:0|[1-9][0-9]*)(?:[.,][0-9]{1,${precision}})?$`)).test(amount)) throw Error(`Enter a decimal amount with at most ${precision} decimal places.`);
-        const canonicalAmount = amount.replace(',', '.');
-        const units = parseUnits(canonicalAmount, precision);
-        if (units <= 0n || units >= 2n ** 256n) throw Error('Enter an amount greater than zero within the token limit.');
-        await preflight(p, from, stamp, revision);
-        // Check tokens before estimation: ERC20 reverts otherwise hide insufficient funds.
-        await tokenBalance({from, token, units});
-        const pol = await polBalance(from);
-        if (pol === 0n) throw Error('Insufficient POL for the network fee. Add POL and review again.');
-        if (token === 'POL' && units >= pol) throw Error('Insufficient POL for the transfer amount plus the estimated network fee. Lower the amount or add POL and review again.');
-        const data = token === 'POL' ? '0x' : encodeFunctionData({abi, functionName: 'transfer', args: [to, units]});
-        const transaction = token === 'POL' ? {from, to, value: `0x${units.toString(16)}`} : {from, to: contract(token), data};
-        const price = quantity(await read(p, 'eth_gasPrice', undefined, true));
-        if (token === 'POL') {
-          const probe = quantity(await read(p, 'eth_estimateGas', [{from, to, value: '0x1'}], true));
-          if (probe <= 0n || price <= 0n) throw Error('Could not read the network fee.');
-          if (pol < units + ((probe * 120n + 99n) / 100n) * price) throw Error('Insufficient POL for the transfer amount plus the estimated network fee. Lower the amount or add POL and review again.');
-        }
-        const estimate = quantity(await read(p, 'eth_estimateGas', [transaction], true));
-        if (estimate <= 0n || price <= 0n) throw Error('Read unavailable');
-        const gas = (estimate * 120n + 99n) / 100n, fee = gas * price;
-        const balance = await balances({from, token, units, fee});
-        await preflight(p, from, stamp, revision);
-        setDraft({from, to, token, amount: canonicalAmount, units, data, gas: `0x${gas.toString(16)}`, fee, balance});
-      } else {
-        if (!draft) return;
-        const d = draft;
-        const execute = async () => {
-          await preflight(p, d.from, stamp, revision);
-          const transaction = d.token === 'POL' ? {from: d.from, to: d.to, value: `0x${d.units.toString(16)}`} : {from: d.from, to: contract(d.token), data: d.data};
-          const price = quantity(await read(p, 'eth_gasPrice', undefined, true));
-          const estimate = quantity(await read(p, 'eth_estimateGas', [transaction], true));
-          if (price <= 0n || estimate <= 0n || ((estimate * 120n + 99n) / 100n) * price !== d.fee || `0x${((estimate * 120n + 99n) / 100n).toString(16)}` !== d.gas) throw Error('Network fee changed. Review the transfer again.');
-          await balances(d);
-          await preflight(p, d.from, stamp, revision);
-          attempted = true; setDraft(null);
-          // One physical RPC for this explicit click. No automatic retry or durable lock.
-          const result = await p.request({method: 'eth_sendTransaction', params: [d.token === 'POL' ? {from: d.from, to: d.to, value: `0x${d.units.toString(16)}`, gas: d.gas} : {from: d.from, to: contract(d.token), data: d.data, gas: d.gas}]});
-          if (typeof result !== 'string' || !/^0x[0-9a-f]{64}$/i.test(result)) throw Error('Unknown wallet result');
-          setHash(result); setMessage('Transaction submitted by the wallet. Check PolygonScan for confirmation; a hash does not prove completion.');
-        };
-        if (navigator.locks) await navigator.locks.request('harbor.manual-send.pending.v2', {ifAvailable: true}, async lock => { if (!lock) throw Error('Pending request'); await execute(); });
-        else await execute();
-      }
-    } catch (error) {
-      setDraft(null);
-      if (attempted) setMessage(rejected(error) ? 'Wallet request rejected. Review again if you want to retry.' : 'The wallet request outcome is unknown. Check your wallet and PolygonScan before sending again: another transfer could duplicate the payment. Harbor will not retry automatically.');
-      else if (epoch.current === stamp) setMessage(error instanceof Error && /^(Enter|Connect|Selected|Switch|Insufficient|Could not|Network fee changed)/.test(error.message) ? error.message : 'Could not verify the wallet, balances or network fee, or another request is pending. No transaction was sent by this action. Review again to retry.');
-    } finally { flight.current = false; pending = false; setBusy(false); }
-  }
-  const close = () => { if (flight.current) return; invalidate(); setOpened(false); dialog.current?.close(); restoreFocus(); };
-  return <div className="manual-send">
-    <button ref={trigger} className="text-button" onClick={() => { setOpened(true); onOpen(); dialog.current?.showModal(); }}><span className="wallet-action-icon asset-placeholder" aria-hidden="true">→</span>Pay with wallet</button>
-    {createPortal(<dialog ref={dialog} className="manual-send-dialog" aria-labelledby="manual-send-title" onCancel={e => {e.preventDefault(); close();}}>
-      <div className="manual-send-heading"><span className="asset-placeholder" aria-hidden="true">Wallet</span><h2 id="manual-send-title">Send Polygon tokens</h2></div>
-      <div className="manual-send-instructions"><p>Copy the recipient and exact amount from Mt Pelerin.</p><div className="manual-send-warning"><span className="manual-send-warning-title"><span className="asset-placeholder" aria-hidden="true">!</span>IMPORTANT<span className="asset-placeholder" aria-hidden="true">!</span></span><p className="manual-send-sender-warning"><strong>Use the same sending wallet address associated with your Mt Pelerin order.</strong><br />Check the address below against the one shown by Mt Pelerin.</p></div></div>
-      <p className="manual-send-from">You are sending from:<br /><code>{wallet.account ?? 'Connect and select your wallet account in the header.'}</code></p>
-      <label>Recipient address<input value={to} disabled={busy} onChange={e => {invalidate(); setTo(e.target.value);}} autoComplete="off" spellCheck={false} /></label>
-      <fieldset className="manual-send-token-field"><legend>Token</legend><div className="manual-send-token-list">{([['USDT', 'USDT0'], ['USDC', 'USDC'], ['POL', 'POL'], ['WBTC', 'WBTC']] as const).map(([value, name]) => <button key={value} type="button" className="manual-send-token-option" disabled={busy} aria-pressed={token === value} onClick={() => {invalidate(); setToken(value);}}><span className="asset-placeholder" aria-hidden="true">{name.slice(0, 1)}</span><span>{name}</span></button>)}</div></fieldset>
-      <p role="status">{label(token)} balance: {!wallet.account ? 'Connect a wallet' : visibleBalance ?? 'Loading…'}</p>
-      <label>Exact amount<input value={amount} disabled={busy} onChange={e => {invalidate(); setAmount(e.target.value);}} inputMode="decimal" autoComplete="off" /></label>
-      {token === 'POL' && <button type="button" className="text-button" disabled={busy || !wallet.account} onClick={() => void useMax()}>Max</button>}
+import { lightningPanel } from './lightning/lightning.js';
+import './pay.css';
+import {ASSETS,NETWORKS,preflight,walletRead,quantity,same,rejected,balance,fee,enough,maxNative,parseAmount,format,transfer,hex,validPayAddress,type Asset,type Network,type Provider} from './pay-core';
+type Wallet={provider:Provider|null;account:string|null;selectionRevision:number;chainId?:number|null};
+type Draft={asset:Asset;from:string;to:string;units:bigint;gas:bigint;gasPrice:bigint;fee:bigint;native:bigint;stamp:number;created:number};
+let physical=false;
+export function ManualBankSend({wallet,onOpen,restoreFocus,hideTrigger=false}:{wallet:Wallet;onOpen:()=>void;restoreFocus:()=>void;hideTrigger?:boolean}){
+ const dialog=useRef<HTMLDialogElement|null>(null),latest=useRef(wallet);latest.current=wallet;
+ const lightningHost=useRef<HTMLDivElement|null>(null),[tab,setTab]=useState<'tokens'|'lightning'>('tokens');
+ const [nativeBusy,setNativeBusy]=useState(false);
+ const requestClose=useRef<()=>void>(()=>{});
+ const openPayment=useRef<(method: 'tokens'|'lightning')=>void>(()=>{});
+ useEffect(()=>{
+  const host=lightningHost.current;
+  host?.append(lightningPanel);
+  const activateLightning=()=>openPayment.current('lightning');
+  const closePay=()=>requestClose.current();
+  const updateNativeBusy=()=>setNativeBusy(lightningPanel.dataset.paymentPending==='true');
+  updateNativeBusy();
+  lightningPanel.addEventListener('harbor:close-pay',closePay);
+  lightningPanel.addEventListener('harbor:payment-pending',updateNativeBusy);
+  const activatePay=()=>openPayment.current('tokens');
+  window.addEventListener('harbor:open-lightning',activateLightning);
+  window.addEventListener('harbor:open-pay',activatePay);
+  return()=>{
+   lightningPanel.removeEventListener('harbor:close-pay',closePay);
+   lightningPanel.removeEventListener('harbor:payment-pending',updateNativeBusy);
+   window.removeEventListener('harbor:open-lightning',activateLightning);
+   window.removeEventListener('harbor:open-pay',activatePay);
+   if(lightningPanel.parentElement===host)lightningPanel.remove();
+  };
+ },[]);
+ const [open,setOpen]=useState(false),[network,setNetwork]=useState<Network>('polygon'),[key,setKey]=useState('USDT'),[to,setTo]=useState(''),[amount,setAmount]=useState('');
+ const asset=ASSETS.find(a=>a.key===key)!;
+ const [draft,setDraft]=useState<Draft|null>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[hash,setHash]=useState<string|null>(null),[uncertain,setUncertain]=useState(false),[chain,setChain]=useState<number|null>(null),[visible,setVisible]=useState<string|null>(null),[refresh,setRefresh]=useState(0);
+ const epoch=useRef(0),flight=useRef(false);
+ const invalidate=()=>{epoch.current++;setDraft(null);setHash(null);if(!uncertain)setMessage('');};
+ const inputs=useRef({network,key,to,amount,open,tab});inputs.current={network,key,to,amount,open,tab};
+ useEffect(()=>{invalidate();setChain(null);setVisible(null);setRefresh(v=>v+1);const p=wallet.provider;
+  const changed=()=>{invalidate();setChain(null);setVisible(null);setMessage('Wallet account or network changed. Review again.');setRefresh(v=>v+1);};
+  const visibility=()=>{if(document.visibilityState==='visible')setRefresh(v=>v+1);};
+  for(const e of ['accountsChanged','chainChanged','disconnect'])p?.on?.(e,changed);document.addEventListener('visibilitychange',visibility);
+  return()=>{epoch.current++;for(const e of ['accountsChanged','chainChanged','disconnect'])p?.removeListener?.(e,changed);document.removeEventListener('visibilitychange',visibility);};
+ },[wallet.provider,wallet.account,wallet.selectionRevision]);
+ useEffect(()=>{let active=true;setChain(null);if(open&&tab==='tokens'&&wallet.provider)walletRead(wallet.provider,'eth_chainId').then(v=>{if(active)setChain(Number(quantity(v)));}).catch(()=>{if(active)setChain(null);});return()=>{active=false;};},[open,tab,wallet.provider,wallet.account,wallet.selectionRevision,refresh]);
+ useEffect(()=>{let active=true;setVisible(null);if(open&&tab==='tokens'&&wallet.provider&&wallet.account)balance(asset,wallet.account).then(v=>{if(active)setVisible(format(v,asset.decimals));}).catch(()=>{if(active)setVisible('unavailable');});return()=>{active=false;};},[open,tab,key,wallet.account,wallet.provider,wallet.selectionRevision,refresh]);
+ // Ref identity changes on every render; compare values, not object identity.
+ function capture(){const p=wallet.provider,from=wallet.account,stamp=epoch.current,rev=wallet.selectionRevision,snapshot={...inputs.current};
+  if(!p||!from||!validPayAddress(from))throw Error('Connect and select a wallet account in the header first.');
+  const guard=()=>{const i=inputs.current;if(epoch.current!==stamp||latest.current.provider!==p||latest.current.selectionRevision!==rev||!same(latest.current.account,from)||!dialog.current?.open||!i.open||i.tab!=='tokens'||(Object.keys(snapshot) as (keyof typeof snapshot)[]).some(k=>snapshot[k]!==i[k]))throw Error('Wallet or payment input changed. Review again.');};
+  return{p,from,stamp,guard,check:()=>preflight(p,from,network,guard)};
+ }
+ async function action(kind:'review'|'max'|'send'|'switch'){
+  if(flight.current||physical||uncertain||!dialog.current?.open||tab!=='tokens')return;flight.current=true;physical=true;setBusy(true);setMessage('');let attempted=false;let start=epoch.current;
+  try{
+   const c=capture();
+   if(kind==='switch'){
+    invalidate();const expected=NETWORKS[network];let error:unknown;
+    try{await c.p.request({method:'wallet_switchEthereumChain',params:[{chainId:expected.hex}]});}catch(e){error=e;}
+    // Always read back the actual chain, including rejection, unsupported and no-op.
+    let actual:number|null=null;try{actual=Number(quantity(await walletRead(c.p,'eth_chainId')));}catch{}
+    if(latest.current.provider!==c.p||!same(latest.current.account,c.from)||latest.current.selectionRevision!==wallet.selectionRevision)throw Error('Wallet changed during network selection. Check your wallet and try again.');
+    setChain(actual);
+    if(error)throw Error(rejected(error)?'Network switch declined. Nothing was signed or sent. Select the network in your wallet or try again.':'This wallet could not switch networks. Select the network manually in your wallet, then retry. No network was added and nothing was sent.');
+    if(actual!==expected.id)throw Error(`${expected.name} was not selected by the wallet. Select it manually or retry. Nothing was sent.`);
+    setMessage(`${expected.name} selected. Review the transfer separately; nothing was sent.`);return;
+   }
+   await c.check();
+   if(!validPayAddress(to))throw Error('Enter a valid nonzero recipient address.');
+   if(kind==='max'){
+    invalidate();start=epoch.current;const m=capture();const units=await maxNative(asset,m.from,to,m.check);m.guard();setAmount(format(units,asset.decimals));return;
+   }
+   if(kind==='review'){
+    setDraft(null);setHash(null);const units=parseAmount(amount,asset.decimals);
+    await enough(asset,c.from,units,0n);c.guard();const f=await fee(asset,c.from,to,units);c.guard();const native=await enough(asset,c.from,units,f.fee);await c.check();
+    setDraft({asset,from:c.from,to,units,...f,native,stamp:c.stamp,created:Date.now()});return;
+   }
+   const d=draft;if(!d||d.stamp!==c.stamp||d.asset.key!==key||d.to!==to||d.units!==parseAmount(amount,asset.decimals)||Date.now()-d.created>60000)throw Error('Review expired or payment changed. Review again.');
+   const execute=async()=>{
+    await c.check();const f=await fee(d.asset,d.from,d.to,d.units);c.guard();
+    if(f.gas>d.gas||f.gasPrice>d.gasPrice)throw Error('Network fee increased. Review the transfer again.');
+    await enough(d.asset,d.from,d.units,d.fee);await c.check();
+    if(Date.now()-d.created>60000)throw Error('Review expired. Review again.');
+    setDraft(null);attempted=true;
+    const result=await c.p.request({method:'eth_sendTransaction',params:[{...transfer(d.asset,d.from,d.to,d.units),chainId:NETWORKS[d.asset.network].hex,gas:hex(d.gas),gasPrice:hex(d.gasPrice)}]});
+    if(typeof result!=='string'||!/^0x[0-9a-f]{64}$/i.test(result))throw Error('Unknown result');
+    // Never project a held response onto another account/input/network.
+    c.guard();setHash(result);setMessage('Transaction submitted by the wallet. A hash is not confirmation or proof of Mt Pelerin payment. Check the explorer.');
+   };
+   if(navigator.locks)await navigator.locks.request('harbor.manual-send.pending.v2',{ifAvailable:true},async lock=>{if(!lock)throw Error('Another payment request is pending. Check your wallet.');await execute();});else throw Error('Secure payment locking is unavailable in this browser. Use a supported secure browser.');
+  }catch(e){
+   setDraft(null);
+   if(attempted){if(rejected(e))setMessage('Wallet request declined. Nothing was resubmitted. Review again to retry.');else{setUncertain(true);setMessage('Wallet request outcome unknown. Check your wallet and the explorer before any new payment. Harbor will not retry; sending again could duplicate payment.');}}
+   else if(kind==='switch'||epoch.current===start)setMessage(e instanceof Error?e.message:'Could not verify the transfer. Nothing was sent. Review again.');
+  }finally{flight.current=false;physical=false;setBusy(false);}
+ }
+ const lightningPending=()=>lightningPanel.dataset.paymentPending==='true';
+ const blocked=()=>flight.current||lightningPending();
+ const selectTab=(next:'tokens'|'lightning')=>{
+  if(blocked())return false;
+  if(tab!==next){invalidate();setTab(next);}
+  return true;
+ };
+ openPayment.current=method=>{
+  const d=dialog.current;
+  if(!d||blocked())return;
+  if(!d.open||tab!==method)invalidate();
+  setTab(method);setOpen(true);onOpen();
+  if(!d.open){d.showModal();d.scrollTop=0;}
+  requestAnimationFrame(()=>{
+   if(!d.open)return;
+   const target=method==='lightning'?lightningPanel.querySelector('textarea'):d.querySelector<HTMLButtonElement>('#pay-tab-tokens');
+   if(target&&!target.disabled)target.focus({preventScroll:true});
+   else d.querySelector<HTMLButtonElement>(`#pay-tab-${method}`)?.focus({preventScroll:true});
+  });
+ };
+ const close=()=>{if(blocked())return;dialog.current?.close();};
+ requestClose.current=close;
+ const onClose=()=>{invalidate();setOpen(false);restoreFocus();};
+ return <>{!hideTrigger&&<div className="manual-send"><button type="button" className="text-button" onClick={()=>openPayment.current('tokens')}><span className="wallet-action-icon pay-menu-icon" aria-hidden="true">→</span>Pay with wallet</button></div>}{createPortal(<dialog ref={dialog} className="manual-send-dialog pay-unified" aria-label="Pay with wallet" onClose={onClose} onCancel={e=>{e.preventDefault();close();}}>
+  <div role="tablist" aria-label="Payment method" className="pay-method-tabs">{(['tokens','lightning'] as const).map(t=><button key={t} type="button" role="tab" id={'pay-tab-'+t} aria-selected={tab===t} aria-controls={'pay-panel-'+t} tabIndex={tab===t?0:-1} aria-disabled={busy||nativeBusy} onClick={()=>selectTab(t)} onKeyDown={e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const next=e.key==='Home'?'tokens':e.key==='End'?'lightning':tab==='tokens'?'lightning':'tokens';if(selectTab(next))document.getElementById('pay-tab-'+next)?.focus();}}}><PayMethodIcon method={t}/>{t==='tokens'?'Send tokens':'Pay Lightning invoice'}</button>)}</div>
+  <div role="tabpanel" id="pay-panel-tokens" aria-labelledby="pay-tab-tokens" hidden={tab!=='tokens'}>
+  <div className="manual-send-instructions"><p>Copy the recipient, network and exact amount from Mt Pelerin.</p><p className="manual-send-sender-warning"><strong>Use the same sending wallet address associated with your Mt Pelerin order.</strong> Check every detail against your order. For Lightning, use the Pay Lightning invoice tab.</p></div>
+  <p className="manual-send-from">You are sending from:<br/><code>{wallet.account??'Connect and select a wallet account in the header.'}</code></p>
+  <fieldset className="manual-send-token-field"><legend>Network</legend><div className="manual-send-token-list">{(Object.keys(NETWORKS) as Network[]).map(n=><button key={n} type="button" disabled={busy} aria-pressed={network===n} className="manual-send-token-option" onClick={()=>{invalidate();setNetwork(n);setKey(n==='polygon'?'USDT':'ETH');setAmount('');}}>{NETWORKS[n].name}</button>)}</div></fieldset>
+  <p role="status">Wallet network: {chain===1?'Ethereum · Chain 1':chain===137?'Polygon · Chain 137':chain===null?'unavailable':`Chain ${chain}`}</p>
+  {chain!==NETWORKS[network].id&&<button type="button" className="secondary full" disabled={busy||!wallet.account||uncertain} onClick={()=>void action('switch')}>Switch wallet to {NETWORKS[network].name}</button>}
+  <label>Recipient address<input placeholder="Paste recipient address" value={to} disabled={busy} onChange={e=>{invalidate();setTo(e.target.value);}} autoComplete="off" spellCheck={false}/></label>
+  <fieldset className="manual-send-token-field"><legend>Token · {NETWORKS[network].name}</legend><div className="manual-send-token-list">{ASSETS.filter(a=>a.network===network).map(a=><button key={a.key} type="button" className="manual-send-token-option" aria-pressed={key===a.key} disabled={busy} onClick={()=>{invalidate();setKey(a.key);setAmount('');}}><span className="pay-token-monogram" aria-hidden="true">{a.mark}</span><span>{a.symbol}</span></button>)}</div></fieldset>
+  <p className="pay-asset-identity">{asset.symbol} · {NETWORKS[network].name} · {asset.decimals} decimals<br/>{asset.address?<code>{asset.address}</code>:<>Native {asset.symbol} (not wrapped)</>}</p>
+  <p role="status">{asset.symbol} balance: {!wallet.account?'Connect a wallet':visible??'Loading…'}</p>
+  <label>Exact amount<input placeholder="0.00" value={amount} disabled={busy} onChange={e=>{invalidate();setAmount(e.target.value);}} inputMode="decimal" autoComplete="off"/></label>
+  {!asset.address&&<button className="text-button" disabled={busy||!wallet.account||chain!==NETWORKS[network].id||uncertain} onClick={()=>void action('max')}>Max</button>}
+  {draft&&<div className="manual-send-review"><strong>Confirm irreversible transfer</strong><p>From: <code>{draft.from}</code></p><p>To: <code>{draft.to}</code></p><p>Exact amount: {format(draft.units,draft.asset.decimals)} {draft.asset.symbol}</p><p>{NETWORKS[draft.asset.network].name} mainnet · Chain {NETWORKS[draft.asset.network].id}</p>{draft.asset.address&&<p>Token contract: <code>{draft.asset.address}</code></p>}<p>Conservative maximum network fee: {format(draft.fee,18)} {NETWORKS[draft.asset.network].native} (20% gas-limit margin, twice the sampled gas price; actual fee may be lower).</p><p>Total reserved: {draft.asset.address?`${format(draft.units,draft.asset.decimals)} ${draft.asset.symbol} + ${format(draft.fee,18)} ${NETWORKS[draft.asset.network].native}`:`${format(draft.units+draft.fee,18)} ${NETWORKS[draft.asset.network].native}`}</p><button className="primary full" disabled={busy||uncertain} onClick={()=>void action('send')}>Confirm and open wallet</button></div>}
+  {(message||uncertain)&&<p role="status">{uncertain?'Wallet request outcome unknown. Check your wallet and the explorer before any new payment. Harbor will not retry; sending again could duplicate payment.':message}</p>}{hash&&<p><a className="manual-send-explorer" href={`${NETWORKS[network].explorer}/tx/${hash}`} target="_blank" rel="noopener noreferrer">View transaction on {network==='polygon'?'PolygonScan':'Etherscan'}</a></p>}
+  {busy&&<p role="status">Waiting for wallet or read-only network checks… Do not send again.</p>}
+  {!draft&&<button className="primary full" disabled={busy||!wallet.account||chain!==NETWORKS[network].id||uncertain} onClick={()=>void action('review')}>Review transfer</button>}
+  <p className="fine-print">Read-only checks share the selected address and transfer details with the selected network’s independent RPC. Selecting a network or token never switches your wallet or sends a transaction.</p>
+  </div>
+  <div ref={lightningHost} role="tabpanel" id="pay-panel-lightning" aria-labelledby="pay-tab-lightning" hidden={tab!=='lightning'}></div>
+  <button type="button" className="secondary full pay-close" disabled={busy||nativeBusy} onClick={close}>Close</button>
+ </dialog>,document.body)}</>;
+}
 
-      {draft && <div className="manual-send-review"><strong>Confirm irreversible transfer</strong><p>From: <code>{draft.from}</code></p><p>To: <code>{draft.to}</code></p><p>Amount: {draft.amount} {label(draft.token)}</p><p>Polygon mainnet · Chain 137</p>{draft.token === 'POL' ? <p>Asset: native POL (not WPOL)</p> : <p>Token contract: <code>{contract(draft.token)}</code></p>}<p>Estimated network fee: {formatUnits(draft.fee, 18)} POL (includes 20% gas-limit margin). Your wallet sets the final fee.</p><p>Estimated total: {draft.token === 'POL' ? `${formatUnits(draft.units + draft.fee, 18)} POL` : `${draft.amount} ${label(draft.token)} + ${formatUnits(draft.fee, 18)} POL`}</p><p>POL balance: {formatUnits(draft.balance, 18)}</p><button className="primary full" disabled={busy} onClick={() => void act(true)}>Confirm and open wallet</button></div>}
-      {message && <p role="status">{message}</p>}
-      {hash && <p><a className="manual-send-explorer" href={`https://polygonscan.com/tx/${hash}`} target="_blank" rel="noopener noreferrer">{`https://polygonscan.com/tx/${hash}`}</a></p>}
-      {busy && <p role="status">Waiting for wallet… Do not send again while this request is pending.</p>}
-      {!draft && <button className="primary full" disabled={busy || !wallet.account} onClick={() => void act(false)}>Review transfer</button>}
-      <button className="secondary full" disabled={busy} onClick={close}>Close</button>
-    </dialog>, document.body)}
-  </div>;
+// Generic chain-link and faceted geometry, not redistributed brand artwork.
+function PayMethodIcon({method}:{method:'tokens'|'lightning'}){
+ if(method==='lightning')return <svg aria-hidden="true" className="pay-method-icon" viewBox="0 0 42 32"><path fill="#000" d="m23 1-12 17h9l-2 13L32 13H22z"/></svg>;
+ return <svg aria-hidden="true" className="pay-method-icon" viewBox="0 0 42 34">
+  <path d="m18 10-4-2-8 5v9l8 5 8-5v-5l7-4" fill="none" stroke="#5823b0" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"/>
+  <path d="m29 2 10 15-10 6-10-6zm0 23 10-6-10 13-10-13z" fill="#7342bc"/>
+  <path d="m29 2 10 15-10 6zm0 23 10-6-10 13z" fill="#331b6d"/>
+ </svg>;
 }
