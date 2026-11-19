@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { lightningPanel } from './lightning/lightning.js';
 import './pay.css';
+import './pay-receipt.css';
+import { PayTransferReceipt } from './PayTransferReceipt';
+import type { Payment } from './pay-receipt';
 import {ASSETS,NETWORKS,preflight,walletRead,quantity,same,rejected,balance,fee,enough,maxNative,parseAmount,format,transfer,hex,validPayAddress,type Asset,type Network,type Provider} from './pay-core';
 type Wallet={provider:Provider|null;account:string|null;selectionRevision:number;chainId?:number|null};
 type Draft={asset:Asset;from:string;to:string;units:bigint;gas:bigint;gasPrice:bigint;fee:bigint;native:bigint;stamp:number;created:number};
@@ -34,9 +37,9 @@ export function ManualBankSend({wallet,onOpen,restoreFocus,hideTrigger=false}:{w
  },[]);
  const [open,setOpen]=useState(false),[network,setNetwork]=useState<Network>('polygon'),[key,setKey]=useState('USDT'),[to,setTo]=useState(''),[amount,setAmount]=useState('');
  const asset=ASSETS.find(a=>a.key===key)!;
- const [draft,setDraft]=useState<Draft|null>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[hash,setHash]=useState<string|null>(null),[uncertain,setUncertain]=useState(false),[chain,setChain]=useState<number|null>(null),[visible,setVisible]=useState<string|null>(null),[refresh,setRefresh]=useState(0);
+ const [draft,setDraft]=useState<Draft|null>(null),[busy,setBusy]=useState(false),[message,setMessage]=useState(''),[payment,setPayment]=useState<Payment|null>(null),[uncertain,setUncertain]=useState(false),[chain,setChain]=useState<number|null>(null),[visible,setVisible]=useState<string|null>(null),[refresh,setRefresh]=useState(0);
  const epoch=useRef(0),flight=useRef(false);
- const invalidate=()=>{epoch.current++;setDraft(null);setHash(null);if(!uncertain)setMessage('');};
+ const invalidate=()=>{epoch.current++;setDraft(null);if(!uncertain)setMessage('');};
  const inputs=useRef({network,key,to,amount,open,tab});inputs.current={network,key,to,amount,open,tab};
  useEffect(()=>{invalidate();setChain(null);setVisible(null);setRefresh(v=>v+1);const p=wallet.provider;
   const changed=()=>{invalidate();setChain(null);setVisible(null);setMessage('Wallet account or network changed. Review again.');setRefresh(v=>v+1);};
@@ -53,7 +56,7 @@ export function ManualBankSend({wallet,onOpen,restoreFocus,hideTrigger=false}:{w
   return{p,from,stamp,guard,check:()=>preflight(p,from,network,guard)};
  }
  async function action(kind:'review'|'max'|'send'|'switch'){
-  if(flight.current||physical||uncertain||!dialog.current?.open||tab!=='tokens')return;flight.current=true;physical=true;setBusy(true);setMessage('');let attempted=false;let start=epoch.current;
+  if(flight.current||physical||uncertain||payment||!dialog.current?.open||tab!=='tokens')return;flight.current=true;physical=true;setBusy(true);setMessage('');let attempted=false;let start=epoch.current;
   try{
    const c=capture();
    if(kind==='switch'){
@@ -73,7 +76,7 @@ export function ManualBankSend({wallet,onOpen,restoreFocus,hideTrigger=false}:{w
     invalidate();start=epoch.current;const m=capture();const units=await maxNative(asset,m.from,to,m.check);m.guard();setAmount(format(units,asset.decimals));return;
    }
    if(kind==='review'){
-    setDraft(null);setHash(null);const units=parseAmount(amount,asset.decimals);
+    setDraft(null);const units=parseAmount(amount,asset.decimals);
     await enough(asset,c.from,units,0n);c.guard();const f=await fee(asset,c.from,to,units);c.guard();const native=await enough(asset,c.from,units,f.fee);await c.check();
     setDraft({asset,from:c.from,to,units,...f,native,stamp:c.stamp,created:Date.now()});return;
    }
@@ -87,7 +90,7 @@ export function ManualBankSend({wallet,onOpen,restoreFocus,hideTrigger=false}:{w
     const result=await c.p.request({method:'eth_sendTransaction',params:[{...transfer(d.asset,d.from,d.to,d.units),chainId:NETWORKS[d.asset.network].hex,gas:hex(d.gas),gasPrice:hex(d.gasPrice)}]});
     if(typeof result!=='string'||!/^0x[0-9a-f]{64}$/i.test(result))throw Error('Unknown result');
     // Never project a held response onto another account/input/network.
-    c.guard();setHash(result);setMessage('Transaction submitted by the wallet. A hash is not confirmation or proof of Mt Pelerin payment. Check the explorer.');
+    c.guard();setPayment({hash:result,asset:d.asset,from:d.from,to:d.to,units:d.units});setRefresh(v=>v+1);
    };
    if(navigator.locks)await navigator.locks.request('harbor.manual-send.pending.v2',{ifAvailable:true},async lock=>{if(!lock)throw Error('Another payment request is pending. Check your wallet.');await execute();});else throw Error('Secure payment locking is unavailable in this browser. Use a supported secure browser.');
   }catch(e){
@@ -122,6 +125,7 @@ export function ManualBankSend({wallet,onOpen,restoreFocus,hideTrigger=false}:{w
  return <>{!hideTrigger&&<div className="manual-send"><button type="button" className="text-button" onClick={()=>openPayment.current('tokens')}><span className="wallet-action-icon pay-menu-icon" aria-hidden="true">→</span>Pay with wallet</button></div>}{createPortal(<dialog ref={dialog} className="manual-send-dialog pay-unified" aria-label="Pay with wallet" onClose={onClose} onCancel={e=>{e.preventDefault();close();}}>
   <div role="tablist" aria-label="Payment method" className="pay-method-tabs">{(['tokens','lightning'] as const).map(t=><button key={t} type="button" role="tab" id={'pay-tab-'+t} aria-selected={tab===t} aria-controls={'pay-panel-'+t} tabIndex={tab===t?0:-1} aria-disabled={busy||nativeBusy} onClick={()=>selectTab(t)} onKeyDown={e=>{if(['ArrowLeft','ArrowRight','Home','End'].includes(e.key)){e.preventDefault();const next=e.key==='Home'?'tokens':e.key==='End'?'lightning':tab==='tokens'?'lightning':'tokens';if(selectTab(next))document.getElementById('pay-tab-'+next)?.focus();}}}><PayMethodIcon method={t}/>{t==='tokens'?'Send tokens':'Pay Lightning invoice'}</button>)}</div>
   <div role="tabpanel" id="pay-panel-tokens" aria-labelledby="pay-tab-tokens" hidden={tab!=='tokens'}>
+  {payment ? <PayTransferReceipt payment={payment} active={open&&tab==='tokens'} onNew={()=>{setPayment(null);setTo('');setAmount('');invalidate();setRefresh(v=>v+1);requestAnimationFrame(()=>dialog.current?.querySelector<HTMLInputElement>('input[placeholder="Paste recipient address"]')?.focus());}}/> : <>
   <div className="manual-send-instructions"><p>Copy the recipient, network and exact amount from Mt Pelerin.</p><p className="manual-send-sender-warning"><strong>Use the same sending wallet address associated with your Mt Pelerin order.</strong> Check every detail against your order. For Lightning, use the Pay Lightning invoice tab.</p></div>
   <p className="manual-send-from">You are sending from:<br/><code>{wallet.account??'Connect and select a wallet account in the header.'}</code></p>
   <fieldset className="manual-send-token-field"><legend>Network</legend><div className="manual-send-token-list">{(Object.keys(NETWORKS) as Network[]).map(n=><button key={n} type="button" disabled={busy} aria-pressed={network===n} className="manual-send-token-option" onClick={()=>{invalidate();setNetwork(n);setKey(n==='polygon'?'USDT':'ETH');setAmount('');}}>{NETWORKS[n].name}</button>)}</div></fieldset>
@@ -134,10 +138,11 @@ export function ManualBankSend({wallet,onOpen,restoreFocus,hideTrigger=false}:{w
   <label>Exact amount<input placeholder="0.00" value={amount} disabled={busy} onChange={e=>{invalidate();setAmount(e.target.value);}} inputMode="decimal" autoComplete="off"/></label>
   {!asset.address&&<button className="text-button" disabled={busy||!wallet.account||chain!==NETWORKS[network].id||uncertain} onClick={()=>void action('max')}>Max</button>}
   {draft&&<div className="manual-send-review"><strong>Confirm irreversible transfer</strong><p>From: <code>{draft.from}</code></p><p>To: <code>{draft.to}</code></p><p>Exact amount: {format(draft.units,draft.asset.decimals)} {draft.asset.symbol}</p><p>{NETWORKS[draft.asset.network].name} mainnet · Chain {NETWORKS[draft.asset.network].id}</p>{draft.asset.address&&<p>Token contract: <code>{draft.asset.address}</code></p>}<p>Conservative maximum network fee: {format(draft.fee,18)} {NETWORKS[draft.asset.network].native} (20% gas-limit margin, twice the sampled gas price; actual fee may be lower).</p><p>Total reserved: {draft.asset.address?`${format(draft.units,draft.asset.decimals)} ${draft.asset.symbol} + ${format(draft.fee,18)} ${NETWORKS[draft.asset.network].native}`:`${format(draft.units+draft.fee,18)} ${NETWORKS[draft.asset.network].native}`}</p><button className="primary full" disabled={busy||uncertain} onClick={()=>void action('send')}>Confirm and open wallet</button></div>}
-  {(message||uncertain)&&<p role="status">{uncertain?'Wallet request outcome unknown. Check your wallet and the explorer before any new payment. Harbor will not retry; sending again could duplicate payment.':message}</p>}{hash&&<p><a className="manual-send-explorer" href={`${NETWORKS[network].explorer}/tx/${hash}`} target="_blank" rel="noopener noreferrer">View transaction on {network==='polygon'?'PolygonScan':'Etherscan'}</a></p>}
+  {(message||uncertain)&&<p role="status">{uncertain?'Wallet request outcome unknown. Check your wallet and the explorer before any new payment. Harbor will not retry; sending again could duplicate payment.':message}</p>}
   {busy&&<p role="status">Waiting for wallet or read-only network checks… Do not send again.</p>}
   {!draft&&<button className="primary full" disabled={busy||!wallet.account||chain!==NETWORKS[network].id||uncertain} onClick={()=>void action('review')}>Review transfer</button>}
   <p className="fine-print">Read-only checks share the selected address and transfer details with the selected network’s independent RPC. Selecting a network or token never switches your wallet or sends a transaction.</p>
+  </>}
   </div>
   <div ref={lightningHost} role="tabpanel" id="pay-panel-lightning" aria-labelledby="pay-tab-lightning" hidden={tab!=='lightning'}></div>
   <button type="button" className="secondary full pay-close" disabled={busy||nativeBusy} onClick={close}>Close</button>

@@ -1,0 +1,16 @@
+.pay-transfer-receipt { margin: 12px 0; padding: 16px; border: 1px solid #d6e0ef; border-radius: 18px; background: #fff; color: #1f2348; }
+.pay-transfer-status { text-align: center; padding: 16px 12px; border-radius: 13px; background: #edf5fb; }
+.pay-transfer-receipt[data-state='confirmed'] .pay-transfer-status { background: #e8f8ef; color: #12573d; }
+.pay-transfer-receipt[data-state='failed'] .pay-transfer-status { background: #fceceb; color: #922e2a; }
+.pay-transfer-receipt[data-state='unverified'] .pay-transfer-status { background: #fff4df; color: #704409; }
+.pay-transfer-status-icon { display: grid; place-items: center; margin: 0 auto 8px; width: 46px; height: 46px; border-radius: 50%; background: #fff; font-size: 27px; font-weight: 800; }
+.pay-unified .pay-transfer-status h2 { margin: 0 0 6px; color: inherit; font-size: 21px; line-height: 1.2; }
+.pay-unified .pay-transfer-status p { margin: 0; color: inherit; font-size: 15px; line-height: 1.4; }
+.pay-unified .pay-transfer-amount { margin: 14px 0; text-align: center; font-size: clamp(21px,5vw,28px); font-weight: 750; overflow-wrap: anywhere; }
+.pay-transfer-receipt dl { margin: 0; padding: 12px; border-radius: 12px; background: #f4f6fb; font-size: 15px; }
+.pay-transfer-receipt dt { font-weight: 700; }
+.pay-transfer-receipt dd { margin: 3px 0 10px; overflow-wrap: anywhere; }
+.pay-transfer-receipt dd:last-child { margin-bottom: 0; }
+.pay-transfer-receipt code { font-size: 13px; }
+.pay-transfer-actions { display: grid; gap: 8px; margin-top: 12px; text-align: center; }
+.pay-transfer-actions a { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; }

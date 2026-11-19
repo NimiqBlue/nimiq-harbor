@@ -32,7 +32,7 @@ export async function preflight(p:Provider,account:string,network:Network,guard:
 }
 let rpcId=0;
 export async function rpc(network:Network,method:string,params:unknown[]=[]):Promise<unknown>{
- if(!['eth_getBalance','eth_call','eth_estimateGas','eth_gasPrice','eth_getBlockByNumber','eth_getCode'].includes(method))throw Error('Read method not allowed');
+ if(!['eth_getBalance','eth_call','eth_estimateGas','eth_gasPrice','eth_getBlockByNumber','eth_getCode','eth_getTransactionReceipt','eth_getTransactionByHash'].includes(method))throw Error('Read method not allowed');
  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),15000);
  async function call(m:string,a:unknown[]){const id=++rpcId;const response=await fetch(NETWORKS[network].rpc,{method:'POST',credentials:'omit',headers:{'Content-Type':'application/json'},body:JSON.stringify({jsonrpc:'2.0',id,method:m,params:a}),signal:controller.signal});if(!response.ok)throw Error('RPC unavailable');const out=await response.json();if(out.id!==id||out.error||!('result'in out))throw Error('RPC unavailable');return out.result;}
  try{if(quantity(await call('eth_chainId',[]))!==BigInt(NETWORKS[network].id))throw Error('Wrong read network');return await call(method,params);}catch{throw Error(`Could not verify ${NETWORKS[network].name} balances or network fee. No transaction was requested. Review again later.`);}finally{clearTimeout(timer)}
